@@ -1,0 +1,207 @@
+Account Bio (160 limit)
+A multiplayer strategy board game played through Twitter.
+Join one of the three martial orders of heaven and engage in valhallan combat.
+Join one of three martial orders and fight for heaven's throne.
+Send this account a DM to play.
+
+A multiplayer strategy board game played over Twitter.
+Join one of three martial orders and engage in valhallan combat for heaven's throne.
+Send a DM to play.
+
+Pinned Tweet (240 limit)
+(info about the game? repeat instructions to start playing? link to detailed
+info? current map?)
+
+Welcome Message (10000 limit)
+
+-------------------------------------------------------------------------------
+
+THEMING
+    Three Kingdoms (martial orders? of heaven?)
+        - Staghorn Sect Orange
+        - Order Gorgona Purple
+        - The Baaturate Green
+
+USER INTERFACE
+    Players interface with the game by sending and receiving direct messages to
+    the Twitter account. General game information is posted to the account's
+    timeline.
+
+    User input
+        - !help
+            Display the following command information.
+        - !join [order]
+            Join the game under the given order. Adds the player to the order
+            and spawns them on the appropriate temple as an initiate.
+        - !move [location]
+            Change the player's next location to the given location. The next
+            location can only be an adjacent space.
+        - !status
+            Display the player's order, class, level, experience, available
+            advances, and location.
+        - !logistics
+            Display movement information for the player's order. Shows a list
+            of locations that allies are moving to, with each location
+            sublisted by the locations others are moving from, as well as their
+            count.
+        - !advance [class?]
+            Advance your class given a high enough level if class is given.
+            Otherwise display available advances.
+        - !quit
+            Quit the game. You can rejoin again with !join.
+        - !toggleupdates
+            Toggle daily update messages.
+
+    Daily broadcasts
+        - New map state
+            The top level public tweet. An svg image of the new state of the
+            map with a short summary of what happened overall.
+        - Field reports
+            These are nested below the new map state tweet. A report is
+            produced for each battle that occurred the previous day. The report
+            lists the location and a short summary of what happened.
+        - Individual updates
+            Sent to all enabled players with summary of what happened to them
+            the previous day.
+
+ARCHITECTURE
+    ===Interface Layer===
+    Webhooks listener
+        - basic http server, since only one path needs to be exposed
+            - autocert for ssl
+            - whitelist twitter ips (low prio)
+            - handles GETs for Challenge Response Checks
+            - handles POSTs and filter for direct messages
+
+    Messenger
+        - Posting tweets
+            - Post tweet helper
+            - Post reply helper
+            - Post battle summary function
+        - Sending direct messages
+            - Send direct message helper
+
+    ===Application Layer===
+    Input Parser
+        - Parse the direct message text and call the corresponding input
+          handler method.
+        - Filtering for particular accounts, times, etc. (abiliy to ban)
+
+    Input Handling
+        - Perform the database operations and response for each command
+        - Getters
+            - !help
+            - !status
+            - !logistics
+            - !advance
+            - invalid command
+        - Mutators
+            - !join [order]
+            - !move [location]
+            - !advance [class]
+            - !quit
+            - !toggleupdates
+
+    Game simulation
+        - Every day, run the battle simulator.
+        - Update the database with the new map state and player locations.
+        - Return a list of all battles that occurred.
+
+    Content generation
+        - Map image
+            - Read map info from database and edit svg image using strings.
+        - Battle summary
+            - Get battles info from game simulator and generate summaries.
+        - Individual summary
+            - Read player info from database and generate summaries.
+
+    ===Data Layer===
+    Database
+        - Postgres database
+        - Tables
+            - User
+                - twitter_id
+                - order
+                - receive_updates
+                - active
+                - location
+                - class
+                - experience
+            - Location
+                - id
+                - name
+                - owner
+            - Location Adjacency
+                - location
+                - adjacent_location
+
+    Task scheduler
+        - gocron
+
+GAME DESIGN
+    Win conditions
+        - Be the last order standing by capturing other temples (domination?)
+        - Capturing and hold heaven's throne for 3 days (ascension?)
+
+    Capturing locations
+        - Staying on the same location for a turn without combat will capture.
+        - Capturing an enemy temple inhibits respawns for that order.
+
+    Battle simulation
+        - 3 lines of combat: cavalry, front, back.
+        - Defender's bonus. (bonus for being on a captured location? bonus for
+          not moving?)
+        - Single round of attacks?
+
+    Player progression
+        Players can gain exp by:
+            - Capturing locations
+            - Participating in battles
+            - Winning battles
+            - Surviving battles
+
+    Classes
+        - Initiate
+        - Cavalry
+        - Spearman
+        - Glavier
+        - Swordsman
+        - Spellcaster
+        - Archer
+        -
+
+
+
+spears
+swords
+horses
+shields
+bows
+spells
+
+stats?
+initiative/speed
+attack
+defense
+range
+
+infantry
+    -> spearman -> glaive master (also additionally effective against infantry)
+    -> swordsman -> bulwark (super tank)
+cavalry
+    -> heavy -> monster rider (can only be hit by archers)
+    -> light -> horse archer (can hit backline more easily)
+ranger
+    -> archer -> spellcaster (can hit multiple)
+    -> medic -> druidic healer (can heal multiple)
+
+randomly select a unit
+that unit attacks another random enemy unit
+
+cavalry and heavy cavalry are much more likely to hit cavalry and frontline
+light cavalry are equally likely to hit
+
+frontline are much more likely to hit cavalry and frontline
+
+archers are equally likely to hit everyone
+healers are more likely to hit frontline and backline
