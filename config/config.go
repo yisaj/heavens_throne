@@ -5,16 +5,16 @@ import (
 )
 
 const (
-	prefix         = "HTHRONE_"
-	placeholderKey = "PLACEHOLDER"
+	prefix   = "HTHRONE_"
+	dbURIKey = "DB_URI"
 )
 
 type Config struct {
-	Placeholder string
+	DatabaseURI string
 }
 
 func New() *Config {
 	return &Config{
-		os.Getenv(prefix + placeholderKey),
+		DatabaseURI: os.Getenv(prefix + dbURIKey),
 	}
 }

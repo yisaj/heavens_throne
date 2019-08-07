@@ -120,13 +120,16 @@ ARCHITECTURE
         - Postgres database
         - Tables
             - User
+                - id
                 - twitter_id
                 - order
                 - receive_updates
                 - active
                 - location
                 - class
+                - rank
                 - experience
+                - dead
             - Location
                 - id
                 - name
@@ -161,7 +164,7 @@ GAME DESIGN
             - Surviving battles
 
     Classes
-        - Initiate
+        - Recruit
         - Cavalry
         - Spearman
         - Glavier
@@ -186,8 +189,8 @@ defense
 range
 
 infantry
-    -> spearman -> glaive master (also additionally effective against infantry)
-    -> swordsman -> bulwark (super tank)
+    -> spear -> glaivemaster (also additionally effective against infantry)
+    -> sword -> bulwark (super tank)
 cavalry
     -> heavy -> monster rider (can only be hit by archers)
     -> light -> horse archer (can hit backline more easily)
