@@ -6,6 +6,13 @@ CREATE TYPE playerclass AS ENUM (
     'ranger', 'archer', 'mage', 'medic', 'healer'
     );
 
+CREATE TABLE location
+(
+    id    serial PRIMARY KEY,
+    name  text NOT NULL UNIQUE,
+    owner martialorder
+);
+
 CREATE TABLE player
 (
     id              serial PRIMARY KEY,
@@ -18,13 +25,6 @@ CREATE TABLE player
     class           playerclass  NOT NULL DEFAULT 'recruit',
     experience      smallint     NOT NULL DEFAULT 0,
     rank            smallint     NOT NULL DEFAULT 1
-);
-
-CREATE TABLE location
-(
-    id    serial PRIMARY KEY,
-    name  text NOT NULL UNIQUE,
-    owner martialorder
 );
 
 CREATE TABLE adjacent_location

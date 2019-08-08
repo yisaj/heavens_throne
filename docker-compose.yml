@@ -1,0 +1,22 @@
+version: "3"
+services:
+  postgres:
+    image: "postgres"
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=hthrone-server
+      - POSTGRES_PASSWORD=hthrone-pass
+      - POSTGRES_DB=hthrone
+  game:
+    build: .
+    environment:
+      - HTHRONE_DB_URI=postgres://hthrone-server:hthrone-pass@postgres/hthrone?sslmode=disable
+    ports:
+      - "443:8080"
+    depends_on:
+      - postgres
+volumes:
+  dbdata:
