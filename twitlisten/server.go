@@ -12,14 +12,6 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-func makeServer() *http.Server {
-	return &http.Server{
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-		IdleTimeout:  120 * time.Second,
-	}
-}
-
 // TODO: pass a message parser to the twitter listener
 func Listen(conf *config.Config, speaker *twitspeak.Speaker, logger *logrus.Logger) {
 	// autocert manager
@@ -30,9 +22,10 @@ func Listen(conf *config.Config, speaker *twitspeak.Speaker, logger *logrus.Logg
 	}
 
 	// auto cert challenge server
-	challengeServer := makeServer()
-	challengeServer.Handler = manager.HTTPHandler(nil)
-	challengeServer.Addr = ":http"
+	challengeServer := &http.Server{
+		Handler: manager.HTTPHandler(nil),
+		Addr:    ":http",
+	}
 
 	// run challenge server
 	go func() {
@@ -44,9 +37,13 @@ func Listen(conf *config.Config, speaker *twitspeak.Speaker, logger *logrus.Logg
 	}()
 
 	// build the twitter webhooks server
-	server := makeServer()
-	server.Handler = NewHandler(conf, logger)
-	server.Addr = ":https"
+	server := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		IdleTimeout:  120 * time.Second,
+		Handler:      NewHandler(conf, logger),
+		Addr:         ":https",
+	}
 	/*
 		server.TLSConfig = &tls.Config{
 			GetCertificate: manager.GetCertificate,
