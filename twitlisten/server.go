@@ -25,7 +25,7 @@ func Listen(conf *config.Config, speaker *twitspeak.Speaker, logger *logrus.Logg
 	// autocert manager
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(conf.Domain),
+		HostPolicy: autocert.HostWhitelist(conf.Domains...),
 		Cache:      autocert.DirCache("certs/cache"),
 	}
 

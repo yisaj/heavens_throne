@@ -2,12 +2,13 @@ package config
 
 import (
 	"os"
+	"strings"
 )
 
 const (
 	prefix            = "HTHRONE_"
 	dbURIKey          = "DB_URI"
-	domainKey         = "DOMAIN"
+	domainsKey        = "DOMAIN"
 	endpointKey       = "ENDPOINT"
 	consumerSecretKey = "CONSUMER_SECRET"
 	twitterEnvNameKey = "TWITTER_ENV_NAME"
@@ -15,16 +16,18 @@ const (
 
 type Config struct {
 	DatabaseURI    string
-	Domain         string
+	Domains        []string
 	Endpoint       string
 	ConsumerSecret string
 	TwitterEnvName string
 }
 
 func New() *Config {
+	domains := strings.Split(os.Getenv(prefix+domainsKey), ",")
+
 	return &Config{
 		DatabaseURI:    os.Getenv(prefix + dbURIKey),
-		Domain:         os.Getenv(prefix + domainKey),
+		Domains:        domains,
 		Endpoint:       os.Getenv(prefix + endpointKey),
 		ConsumerSecret: os.Getenv(prefix + consumerSecretKey),
 		TwitterEnvName: os.Getenv(prefix + twitterEnvNameKey),
