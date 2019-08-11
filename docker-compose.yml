@@ -16,7 +16,8 @@ services:
       - HTHRONE_DB_URI=postgres://hthrone-server:hthrone-pass@postgres/hthrone?sslmode=disable
       - HTHRONE_ENDPOINT=/hthrone
     ports:
-      - "443:8080"
+      - "443:443"
+      - "80:80"
     depends_on:
       - postgres
 volumes:
