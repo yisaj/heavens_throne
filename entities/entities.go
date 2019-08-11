@@ -1,5 +1,7 @@
 package entities
 
+import "fmt"
+
 type Player struct {
 	ID             int32
 	TwitterID      string `db:"twitter_id"`
@@ -13,9 +15,15 @@ type Player struct {
 	Rank           int16
 }
 
-type TwitterResponse struct {
-	errors []struct {
-		message string
-		code    int32
+type TwitterErrors []struct {
+	message string
+	code    int32
+}
+
+func (te TwitterErrors) Error() string {
+	body := ""
+	for _, err := range te {
+		body += fmt.Sprintf("code: %d, msg: %s\n", err.code, err.message)
 	}
+	return body
 }

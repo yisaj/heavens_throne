@@ -21,6 +21,7 @@ const (
 
 type Resource interface {
 	PlayerResource
+	WebhooksResource
 }
 
 type connection struct {

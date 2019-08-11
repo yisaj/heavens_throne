@@ -1,19 +1,47 @@
 package twitlisten
 
 import (
+	"context"
 	"crypto/tls"
 	"net/http"
 	"time"
 
 	"github.com/yisaj/heavens_throne/config"
+	"github.com/yisaj/heavens_throne/database"
 	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/acme/autocert"
 )
 
+const (
+	maxWebhooksRegistrationAttempts = 5
+)
+
 // TODO: pass a message parser to the twitter listener
-func Listen(conf *config.Config, speaker *twitspeak.Speaker, logger *logrus.Logger) {
+func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource database.Resource, logger *logrus.Logger) {
+	// check for webhooks id in database
+	webhooksID, err := resource.GetWebhooksID(context.TODO())
+	if err != nil {
+		logger.WithError(err).Fatal("error while performing initial webhooks id check")
+	}
+
+	// if not, register the webhook
+	if webhooksID == "" {
+		for attempts := 1; attempts <= maxWebhooksRegistrationAttempts; attempts++ {
+			id, err := speaker.RegisterWebhook()
+			if err != nil {
+				logger.WithError(err).Fatal("error while registering webhooks url")
+			}
+			if id != "" {
+				webhooksID = id
+				break
+			}
+
+			time.Sleep(time.Second)
+		}
+	}
+
 	// autocert manager
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
@@ -44,11 +72,6 @@ func Listen(conf *config.Config, speaker *twitspeak.Speaker, logger *logrus.Logg
 		Handler:      NewHandler(conf, logger),
 		Addr:         ":https",
 	}
-	/*
-		server.TLSConfig = &tls.Config{
-			GetCertificate: manager.GetCertificate,
-		}
-	*/
 
 	// start listening on https socket
 	tlsConf := &tls.Config{
@@ -59,8 +82,11 @@ func Listen(conf *config.Config, speaker *twitspeak.Speaker, logger *logrus.Logg
 		logger.WithError(err).Fatal("failed listening on https socket")
 	}
 
-	// trigger a CRC
-	logger.Debug("I'm in between listening and serving")
+	// trigger a CRC manually
+	err = speaker.TriggerCRC(webhooksID)
+	if err != nil {
+		logger.WithError(err).Fatal("error while triggering crc")
+	}
 
 	// start serving on the twitter webhooks listener
 	logger.Info("starting twitter listener")

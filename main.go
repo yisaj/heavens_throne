@@ -17,7 +17,7 @@ func main() {
 	conf := config.New()
 
 	// spin up connection to database
-	_, err := database.Connect(conf)
+	resource, err := database.Connect(conf)
 	if err != nil {
 		logger.WithError(err).Fatal("failed database connection")
 	}
@@ -28,7 +28,7 @@ func main() {
 	// spin up game simulation task
 
 	// spin up twitter webhooks server
-	twitlisten.Listen(conf, speaker, logger)
+	twitlisten.Listen(conf, speaker, resource, logger)
 
 	// stop game simulation task on exit
 
