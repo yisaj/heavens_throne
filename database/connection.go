@@ -27,12 +27,12 @@ type connection struct {
 	db *sqlx.DB
 }
 
-func Connect(config *config.Config) (Resource, error) {
+func Connect(conf *config.Config) (Resource, error) {
 	// open and ping db connection
 	var db *sqlx.DB
 	var err error
 	for attempts := 1; attempts <= maxConnectionAttempts; attempts++ {
-		db, err = sqlx.Connect(dbDriverName, config.DatabaseURI)
+		db, err = sqlx.Connect(dbDriverName, conf.DatabaseURI)
 		if err == nil {
 			break
 		}

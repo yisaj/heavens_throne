@@ -12,3 +12,10 @@ type Player struct {
 	Experience     int16
 	Rank           int16
 }
+
+type TwitterResponse struct {
+	errors []struct {
+		message string
+		code    int32
+	}
+}

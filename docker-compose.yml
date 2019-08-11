@@ -14,6 +14,7 @@ services:
     build: .
     environment:
       - HTHRONE_DB_URI=postgres://hthrone-server:hthrone-pass@postgres/hthrone?sslmode=disable
+      - HTHRONE_ENDPOINT=/hthrone
     ports:
       - "443:8080"
     depends_on:

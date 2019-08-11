@@ -72,6 +72,7 @@ ARCHITECTURE
             - whitelist twitter ips (low prio)
             - handles GETs for Challenge Response Checks
             - handles POSTs and filter for direct messages
+            - Mutually exclude the game simulator
 
     Messenger
         - Posting tweets
@@ -106,6 +107,7 @@ ARCHITECTURE
         - Every day, run the battle simulator.
         - Update the database with the new map state and player locations.
         - Return a list of all battles that occurred.
+        - Mutually exclude the webhooks listener.
 
     Content generation
         - Map image
