@@ -122,7 +122,7 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 		paramString.WriteByte('&')
 	}
 	signature.WriteString(url.QueryEscape(strings.TrimSuffix(paramString.String(), "&")))
-	signingKey := url.QueryEscape(s.conf.ConsumerSecret) + "&" + url.QueryEscape(s.conf.AccessToken)
+	signingKey := url.QueryEscape(s.conf.ConsumerSecret) + "&" + url.QueryEscape(s.conf.AccessTokenSecret)
 	hash := hmac.New(sha1.New, []byte(signingKey))
 	hash.Write([]byte(signature.String()))
 	hashedSignature := base64.StdEncoding.EncodeToString(hash.Sum(nil))
