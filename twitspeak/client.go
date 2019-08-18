@@ -165,10 +165,11 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
 	if len(twitterRes.Errors) > 0 {
-		for _, twitterErr := range twitterRes.Errors {
+		err = twitterRes.Errors[0]
+		for _, twitterErr := range twitterRes.Errors[1:] {
 			err = multierror.Append(err, twitterErr)
 		}
-		return err
+		return errors.Wrap(err, "trigger CRC response errors")
 	}
 
 	return nil
@@ -201,11 +202,11 @@ func (s *speaker) RegisterWebhook() (string, error) {
 		return "", errors.Wrap(err, "failed decoding register webhook response")
 	}
 	if len(twitterRes.Errors) > 0 {
-		err = errors.New("register webhook response errors")
-		for _, twitterErr := range twitterRes.Errors {
+		err = twitterRes.Errors[0]
+		for _, twitterErr := range twitterRes.Errors[1:] {
 			err = multierror.Append(err, twitterErr)
 		}
-		return "", err
+		return "", errors.Wrap(err, "register webhook response errors")
 	}
 
 	return twitterRes.ID, nil
