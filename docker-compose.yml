@@ -16,6 +16,7 @@ services:
       - HTHRONE_DB_URI=postgres://hthrone-server:hthrone-pass@postgres/hthrone?sslmode=disable
       - HTHRONE_ENDPOINT=/hthrone
       - HTHRONE_DOMAIN=twitter.summerofgame.com,167.71.119.132
+      - HTHRONE_TWITTER_ENV_NAME=hthrone
     ports:
       - "443:443"
       - "80:80"

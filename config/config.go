@@ -12,6 +12,7 @@ const (
 	endpointKey       = "ENDPOINT"
 	consumerSecretKey = "CONSUMER_SECRET"
 	twitterEnvNameKey = "TWITTER_ENV_NAME"
+	accessTokenKey    = "ACCESS_TOKEN"
 )
 
 type Config struct {
@@ -20,6 +21,7 @@ type Config struct {
 	Endpoint       string
 	ConsumerSecret string
 	TwitterEnvName string
+	AccessToken    string
 }
 
 func New() *Config {
@@ -31,5 +33,6 @@ func New() *Config {
 		Endpoint:       os.Getenv(prefix + endpointKey),
 		ConsumerSecret: os.Getenv(prefix + consumerSecretKey),
 		TwitterEnvName: os.Getenv(prefix + twitterEnvNameKey),
+		AccessToken:    os.Getenv(prefix + accessTokenKey),
 	}
 }

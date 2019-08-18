@@ -15,15 +15,16 @@ type Player struct {
 	Rank           int16
 }
 
-type TwitterErrors []struct {
-	message string
-	code    int32
+type TwitterResponse struct {
+	Errors []TwitterError
+	ID     string
 }
 
-func (te TwitterErrors) Error() string {
-	body := ""
-	for _, err := range te {
-		body += fmt.Sprintf("code: %d, msg: %s\n", err.code, err.message)
-	}
-	return body
+type TwitterError struct {
+	Message string
+	Code    int32
+}
+
+func (te TwitterError) Error() string {
+	return fmt.Sprintf("Twitter Err %d: %s", te.Code, te.Message)
 }
