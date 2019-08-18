@@ -25,8 +25,8 @@ import (
 const (
 	apiPrefix  = "https://api.twitter.com/1.1/account_activity/all"
 	nonceRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-	nonceMask  = 1<<uint(len(nonceRunes)) - 1
-	nonceMax   = uint(63 / len(nonceRunes))
+	nonceMax   = 6
+	nonceMask  = 1<<uint(nonceMax) - 1
 )
 
 var (
