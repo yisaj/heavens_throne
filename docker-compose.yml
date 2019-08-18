@@ -17,6 +17,8 @@ services:
       - HTHRONE_ENDPOINT=/hthrone
       - HTHRONE_DOMAIN=twitter.summerofgame.com,167.71.119.132
       - HTHRONE_TWITTER_ENV_NAME=hthrone
+    env_file:
+      - .env
     ports:
       - "443:443"
       - "80:80"
