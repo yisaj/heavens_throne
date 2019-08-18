@@ -25,7 +25,7 @@ import (
 const (
 	apiPrefix  = "https://api.twitter.com/1.1/account_activity/all"
 	nonceRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-	nonceMask  = 1 << uint(len(nonceRunes)-1)
+	nonceMask  = 1<<uint(len(nonceRunes)) - 1
 	nonceMax   = uint(63 / len(nonceRunes))
 )
 
@@ -77,7 +77,7 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 	userToken := s.conf.AccessToken
 	nonce := generateNonce(32)
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	signatureMethod := "HMAC_SHA1"
+	signatureMethod := "HMAC-SHA1"
 	version := "1.0"
 
 	// collect the values for the signature field
