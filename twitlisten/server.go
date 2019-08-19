@@ -84,6 +84,10 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 					logger.WithError(err).Fatal("error while registering webhooks url")
 				}
 				if id != "" {
+					err := resource.SetWebhooksID(context.TODO(), webhooksID)
+					if err != nil {
+						logger.WithError(err).Fatal("error while setting webhooks id in database")
+					}
 					handler.WebhooksID = webhooksID
 					break
 				}

@@ -56,7 +56,7 @@ func (h *handler) handleCRC(w http.ResponseWriter, r *http.Request, secret strin
 	responseToken := base64.StdEncoding.EncodeToString(hash.Sum(nil))
 
 	// respond to challenge
-	responseFmt := `{"response_token":"sha=%s"}`
+	responseFmt := `{"response_token":"sha256=%s"}`
 	w.Header().Set("Content-Type", "application/json")
 	_, err := w.Write([]byte(fmt.Sprintf(responseFmt, responseToken)))
 	if err != nil {
