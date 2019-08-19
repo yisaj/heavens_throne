@@ -26,7 +26,7 @@ func NewHandler(conf *config.Config, logger *logrus.Logger) http.Handler {
 	h.mux.HandleFunc(conf.Endpoint, func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "", "GET":
-			h.handleCRC(w, r, conf.ConsumerSecret)
+			h.handleCRC(w, r, conf.ConsumerKeySecret)
 		case "POST":
 			h.handleEvent(w, r)
 		default:

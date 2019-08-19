@@ -10,7 +10,8 @@ const (
 	dbURIKey             = "DB_URI"
 	domainsKey           = "DOMAIN"
 	endpointKey          = "ENDPOINT"
-	consumerSecretKey    = "CONSUMER_SECRET"
+	consumerKeyKey       = "CONSUMER_KEY"
+	consumerKeySecretKey = "CONSUMER_KEY_SECRET"
 	twitterEnvNameKey    = "TWITTER_ENV_NAME"
 	accessTokenKey       = "ACCESS_TOKEN"
 	accessTokenSecretKey = "ACCESS_TOKEN_SECRET"
@@ -20,7 +21,8 @@ type Config struct {
 	DatabaseURI       string
 	Domains           []string
 	Endpoint          string
-	ConsumerSecret    string
+	ConsumerKey       string
+	ConsumerKeySecret string
 	TwitterEnvName    string
 	AccessToken       string
 	AccessTokenSecret string
@@ -33,7 +35,8 @@ func New() *Config {
 		DatabaseURI:       os.Getenv(prefix + dbURIKey),
 		Domains:           domains,
 		Endpoint:          os.Getenv(prefix + endpointKey),
-		ConsumerSecret:    os.Getenv(prefix + consumerSecretKey),
+		ConsumerKey:       os.Getenv(prefix + consumerKeyKey),
+		ConsumerKeySecret: os.Getenv(prefix + consumerKeySecretKey),
 		TwitterEnvName:    os.Getenv(prefix + twitterEnvNameKey),
 		AccessToken:       os.Getenv(prefix + accessTokenKey),
 		AccessTokenSecret: os.Getenv(prefix + accessTokenSecretKey),

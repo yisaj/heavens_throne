@@ -73,7 +73,7 @@ func generateNonce(length int) string {
 
 func (s *speaker) authorizeRequest(req *http.Request) error {
 	// collect the values for the authorization header
-	consumerKey := s.conf.ConsumerSecret
+	consumerKey := s.conf.ConsumerKey
 	userToken := s.conf.AccessToken
 	nonce := generateNonce(32)
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -82,7 +82,7 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 
 	// collect the values for the signature field
 	reqMethod := req.Method
-	reqURL := url.QueryEscape(req.Host) + req.URL.EscapedPath()
+	reqURL := req.URL.Scheme + "://" + req.URL.Host + req.URL.EscapedPath()
 
 	var params url.Values
 	if req.Body != nil {
@@ -106,7 +106,7 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 	signature := strings.Builder{}
 	signature.WriteString(reqMethod)
 	signature.WriteByte('&')
-	signature.WriteString(reqURL)
+	signature.WriteString(url.QueryEscape(reqURL))
 	signature.WriteByte('&')
 
 	keys := make([]string, 0, len(params))
@@ -118,11 +118,13 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 	paramString := strings.Builder{}
 	for _, key := range keys {
 		values := params[key]
+		paramString.WriteString(key)
+		paramString.WriteByte('=')
 		paramString.WriteString(url.QueryEscape(values[0]))
 		paramString.WriteByte('&')
 	}
 	signature.WriteString(url.QueryEscape(strings.TrimSuffix(paramString.String(), "&")))
-	signingKey := url.QueryEscape(s.conf.ConsumerSecret) + "&" + url.QueryEscape(s.conf.AccessTokenSecret)
+	signingKey := url.QueryEscape(s.conf.ConsumerKeySecret) + "&" + url.QueryEscape(s.conf.AccessTokenSecret)
 	hash := hmac.New(sha1.New, []byte(signingKey))
 	hash.Write([]byte(signature.String()))
 	hashedSignature := base64.StdEncoding.EncodeToString(hash.Sum(nil))
@@ -143,7 +145,7 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 
 func (s *speaker) TriggerCRC(webhookID string) error {
 	// send a request to the twitter API to manually trigger a challenge-response check
-	triggerCRCPath := fmt.Sprintf(":%s/webhooks/%s.json", s.conf.TwitterEnvName, webhookID)
+	triggerCRCPath := fmt.Sprintf("%s/webhooks/%s.json", s.conf.TwitterEnvName, webhookID)
 	req, err := http.NewRequest("PUT", apiPrefix+triggerCRCPath, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed building trigger CRC request")
@@ -177,14 +179,16 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 
 func (s *speaker) RegisterWebhook() (string, error) {
 	// send a request to the twitter API to register the configured URL as a webhook
-	registerWebhookPath := fmt.Sprintf("/:%s/webhooks.json", s.conf.TwitterEnvName)
+	registerWebhookPath := fmt.Sprintf("/%s/webhooks.json", s.conf.TwitterEnvName)
 	webhookURL := "https://" + s.conf.Domains[0] + s.conf.Endpoint
 
 	req, err := http.NewRequest("POST", apiPrefix+registerWebhookPath, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "failed building webhooks registration request")
 	}
-	req.URL.Query().Add("url", webhookURL)
+	query := req.URL.Query()
+	query.Add("url", webhookURL)
+	req.URL.RawQuery = query.Encode()
 
 	err = s.authorizeRequest(req)
 	if err != nil {
