@@ -13,14 +13,16 @@ import (
 )
 
 type handler struct {
-	mux    *http.ServeMux
-	logger *logrus.Logger
+	mux        *http.ServeMux
+	logger     *logrus.Logger
+	WebhooksID string
 }
 
 func NewHandler(conf *config.Config, logger *logrus.Logger) http.Handler {
 	h := &handler{
 		http.NewServeMux(),
 		logger,
+		"",
 	}
 
 	h.mux.HandleFunc(conf.Endpoint, func(w http.ResponseWriter, r *http.Request) {

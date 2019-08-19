@@ -26,22 +26,6 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 		logger.WithError(err).Fatal("error while performing initial webhooks id check")
 	}
 
-	// if not, register the webhook
-	if webhooksID == "" {
-		for attempts := 1; attempts <= maxWebhooksRegistrationAttempts; attempts++ {
-			id, err := speaker.RegisterWebhook()
-			if err != nil {
-				logger.WithError(err).Fatal("error while registering webhooks url")
-			}
-			if id != "" {
-				webhooksID = id
-				break
-			}
-
-			time.Sleep(time.Second)
-		}
-	}
-
 	// autocert manager
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
@@ -65,11 +49,12 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	}()
 
 	// build the twitter webhooks server
+	twitterHandler := NewHandler(conf, logger)
 	server := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		IdleTimeout:  120 * time.Second,
-		Handler:      NewHandler(conf, logger),
+		Handler:      twitterHandler,
 		Addr:         ":https",
 	}
 
@@ -82,10 +67,30 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 		logger.WithError(err).Fatal("failed listening on https socket")
 	}
 
-	// trigger a CRC manually
-	err = speaker.TriggerCRC(webhooksID)
-	if err != nil {
-		logger.WithError(err).Fatal("error while triggering crc")
+	if webhooksID != "" {
+		// trigger a CRC manually
+		go func() {
+			err = speaker.TriggerCRC(webhooksID)
+			if err != nil {
+				logger.WithError(err).Fatal("error while triggering crc")
+			}
+		}()
+	} else {
+		// register the webhook
+		go func(handler *handler) {
+			for attempts := 1; attempts <= maxWebhooksRegistrationAttempts; attempts++ {
+				id, err := speaker.RegisterWebhook()
+				if err != nil {
+					logger.WithError(err).Fatal("error while registering webhooks url")
+				}
+				if id != "" {
+					handler.WebhooksID = webhooksID
+					break
+				}
+				// TODO: Log an error here
+				time.Sleep(time.Second)
+			}
+		}(twitterHandler.(*handler))
 	}
 
 	// start serving on the twitter webhooks listener
