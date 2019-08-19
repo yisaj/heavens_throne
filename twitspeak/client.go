@@ -145,7 +145,7 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 
 func (s *speaker) TriggerCRC(webhookID string) error {
 	// send a request to the twitter API to manually trigger a challenge-response check
-	triggerCRCPath := fmt.Sprintf("%s/webhooks/%s.json", s.conf.TwitterEnvName, webhookID)
+	triggerCRCPath := fmt.Sprintf("/%s/webhooks/%s.json", s.conf.TwitterEnvName, webhookID)
 	req, err := http.NewRequest("PUT", apiPrefix+triggerCRCPath, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed building trigger CRC request")
@@ -169,7 +169,7 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 	if len(twitterRes.Errors) > 0 {
 		err = twitterRes.Errors[0]
 		for _, twitterErr := range twitterRes.Errors[1:] {
-			err = multierror.Append(err, twitterErr)
+			err = multierror.Append(err, &twitterErr)
 		}
 		return errors.Wrap(err, "trigger CRC response errors")
 	}
