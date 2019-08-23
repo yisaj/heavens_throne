@@ -162,7 +162,7 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 	}
 
 	var twitterRes entities.TwitterResponse
-	err = json.NewDecoder(res.Body).Decode(twitterRes)
+	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
