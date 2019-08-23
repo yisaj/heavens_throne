@@ -30,7 +30,7 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	manager := &autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(conf.Domains...),
-		Cache:      autocert.DirCache("certs/cache"),
+		Cache:      autocert.DirCache("certs"),
 	}
 
 	// auto cert challenge server
