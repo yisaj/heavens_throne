@@ -19,12 +19,11 @@ import (
 	"github.com/yisaj/heavens_throne/config"
 	"github.com/yisaj/heavens_throne/entities"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
 const (
-	apiPrefix  = "https://api.twitter.com/1.1/account_activity/all"
+	apiPrefix  = "https://api.twitter.com/1.1"
 	nonceRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 	nonceMax   = 6
 	nonceMask  = 1<<uint(nonceMax) - 1
@@ -158,7 +157,7 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 
 func (s *speaker) TriggerCRC(webhookID string) error {
 	// send a request to the twitter API to manually trigger a challenge-response check
-	triggerCRCPath := fmt.Sprintf("/%s/webhooks/%s.json", s.conf.TwitterEnvName, webhookID)
+	triggerCRCPath := fmt.Sprintf("/account_activity/all/%s/webhooks/%s.json", s.conf.TwitterEnvName, webhookID)
 	req, err := http.NewRequest("PUT", apiPrefix+triggerCRCPath, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed building trigger CRC request")
@@ -180,7 +179,7 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
 
-	err = parseTwitterErrors(twitterRes.Errors)
+	err = twitterRes.GetErrors()
 	if err != nil {
 		return errors.Wrap(err, "trigger CRC response errors")
 	}
@@ -189,7 +188,7 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 
 func (s *speaker) RegisterWebhook() (string, error) {
 	// send a request to the twitter API to register the configured URL as a webhook
-	registerWebhookPath := fmt.Sprintf("/%s/webhooks.json", s.conf.TwitterEnvName)
+	registerWebhookPath := fmt.Sprintf("/account_activity/all/%s/webhooks.json", s.conf.TwitterEnvName)
 	webhookURL := "https://" + s.conf.Domains[0] + s.conf.Endpoint
 
 	req, err := http.NewRequest("POST", apiPrefix+registerWebhookPath, nil)
@@ -216,11 +215,48 @@ func (s *speaker) RegisterWebhook() (string, error) {
 		return "", errors.Wrap(err, "failed decoding register webhook response")
 	}
 
-	err = parseTwitterErrors(twitterRes.Errors)
+	err = twitterRes.GetErrors()
 	if err != nil {
 		return "", errors.Wrap(err, "register webhook response errors")
 	}
 	return twitterRes.ID, nil
+}
+
+func (s *speaker) SendDM(userID string, msg string) error {
+	// send a direct message to a user
+	sendDMPath := "/direct_messages/events/new.json"
+	eventFmt := `{"event": { "type": "message_create", 
+		"message_create": {
+			"target": {"recipient_id": "%s"},
+			"message_data":{"text": "%s"}}}}`
+	eventString := fmt.Sprintf(eventFmt, userID, msg)
+
+	req, err := http.NewRequest("POST", apiPrefix+sendDMPath, strings.NewReader(eventString))
+	if err != nil {
+		return errors.Wrap(err, "failed building post direct message request")
+	}
+
+	err = s.authorizeRequest(req)
+	if err != nil {
+		return errors.Wrap(err, "failed authorizing post direct message request")
+	}
+
+	res, err := s.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed posting direct message")
+	}
+
+	var twitterRes entities.TwitterResponse
+	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	if err != nil {
+		return errors.Wrap(err, "failed decoding post direct message response")
+	}
+
+	err = twitterRes.GetErrors()
+	if err != nil {
+		return errors.Wrap(err, "post direct message response errors")
+	}
+	return nil
 }
 
 func (s *speaker) SubscribeUser() error {
@@ -246,7 +282,7 @@ func (s *speaker) SubscribeUser() error {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
 
-	err = parseTwitterErrors(twitterRes.Errors)
+	err = twitterRes.GetErrors()
 	if err != nil {
 		return errors.Wrap(err, "subscribe user response errors")
 	}
