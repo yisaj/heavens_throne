@@ -1,6 +1,10 @@
 package entities
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+)
 
 type Player struct {
 	ID             int32
@@ -18,6 +22,17 @@ type Player struct {
 type TwitterResponse struct {
 	Errors []TwitterError
 	ID     string
+}
+
+func (tr TwitterResponse) GetErrors() error {
+	if len(tr.Errors) > 0 {
+		var err error = tr.Errors[0]
+		for _, twitterErr := range tr.Errors[1:] {
+			err = multierror.Append(err, twitterErr)
+		}
+		return errors.Wrap(err, "register webhook response errors")
+	}
+	return nil
 }
 
 type TwitterError struct {
