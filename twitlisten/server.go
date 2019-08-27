@@ -14,10 +14,6 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-const (
-	maxWebhooksRegistrationAttempts = 5
-)
-
 // TODO: pass a message parser to the twitter listener
 func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource database.Resource, logger *logrus.Logger) {
 	// check for webhooks id in database
@@ -78,22 +74,16 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	} else {
 		// register the webhook
 		go func(handler *handler) {
-			for attempts := 1; attempts <= maxWebhooksRegistrationAttempts; attempts++ {
-				id, err := speaker.RegisterWebhook()
-				if err != nil {
-					logger.WithError(err).Fatal("error while registering webhooks url")
-				}
-				if id != "" {
-					err := resource.SetWebhooksID(context.TODO(), webhooksID)
-					if err != nil {
-						logger.WithError(err).Fatal("error while setting webhooks id in database")
-					}
-					handler.WebhooksID = webhooksID
-					break
-				}
-				// TODO: Log an error here
-				time.Sleep(time.Second)
+			id, err := speaker.RegisterWebhook()
+			if err != nil || id == "" {
+				logger.WithError(err).Fatal("error while registering webhooks url")
 			}
+
+			err = resource.SetWebhooksID(context.TODO(), webhooksID)
+			if err != nil {
+				logger.WithError(err).Fatal("error while setting webhooks id in database")
+			}
+			handler.WebhooksID = webhooksID
 		}(twitterHandler.(*handler))
 	}
 
