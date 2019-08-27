@@ -41,6 +41,7 @@ type speaker struct {
 type TwitterSpeaker interface {
 	TriggerCRC(webhookID string) error
 	RegisterWebhook() (string, error)
+	SendDM(userID string, msg string) error
 	SubscribeUser() error
 }
 

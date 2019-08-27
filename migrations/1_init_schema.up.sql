@@ -4,7 +4,7 @@ CREATE TYPE playerclass AS ENUM (
     'infantry', 'spear', 'glaivemaster', 'sword', 'legionary',
     'cavalry', 'heavycavalry', 'monsterknight', 'lightcavalry', 'horsearcher',
     'ranger', 'archer', 'mage', 'medic', 'healer'
-    );
+);
 
 CREATE TABLE location
 (

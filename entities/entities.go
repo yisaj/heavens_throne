@@ -2,6 +2,7 @@ package entities
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
@@ -17,6 +18,47 @@ type Player struct {
 	Class          string
 	Experience     int16
 	Rank           int16
+}
+
+func (p Player) FormatOrder() string {
+	translation := map[string]string{
+		"staghorn":  "Staghorn Sect",
+		"gorgona":   "Order Gorgona",
+		"baaturate": "The Baaturate",
+	}
+
+	return translation[p.MartialOrder]
+}
+
+func (p Player) FormatClass() string {
+	classTranslation := map[string]string{
+		"recruit":       "Recruit",
+		"infantry":      "Infantry",
+		"spear":         "Spear",
+		"glaivemaster":  "Glaivemaster",
+		"sword":         "Sword",
+		"legionary":     "Legionary",
+		"cavalry":       "Cavalry",
+		"heavycavalry":  "Heavy Cavalry",
+		"monsterknight": "Monster Knight",
+		"lightcavalry":  "Light Cavalry",
+		"horsearcher":   "Horse Archer",
+		"ranger":        "Ranger",
+		"archer":        "Archer",
+		"mage":          "Mage",
+		"medic":         "Medic",
+		"healer":        "Healer",
+	}
+
+	rankTranslation := map[int16]string{
+		1: "I",
+		2: "II",
+		3: "III",
+		4: "IV",
+		5: "V",
+	}
+
+	return fmt.Sprintf("%s %s", classTranslation[p.Class], rankTranslation[p.Rank])
 }
 
 type TwitterResponse struct {
