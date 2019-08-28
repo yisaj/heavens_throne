@@ -42,6 +42,7 @@ type speaker struct {
 type TwitterSpeaker interface {
 	TriggerCRC(webhookID string) error
 	RegisterWebhook() (string, error)
+	SubscribeUser() error
 }
 
 func NewSpeaker(conf *config.Config) TwitterSpeaker {
@@ -70,6 +71,17 @@ func generateNonce(length int) string {
 	}
 
 	return *(*string)(unsafe.Pointer(&nonce))
+}
+
+func parseTwitterErrors(errors []entities.TwitterError) error {
+	if len(errors) > 0 {
+		var err error = errors[0]
+		for _, twitterErr := range errors[1:] {
+			err = multierror.Append(err, twitterErr)
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *speaker) authorizeRequest(req *http.Request) error {
@@ -167,14 +179,11 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
-	if len(twitterRes.Errors) > 0 {
-		err = twitterRes.Errors[0]
-		for _, twitterErr := range twitterRes.Errors[1:] {
-			err = multierror.Append(err, &twitterErr)
-		}
+
+	err = parseTwitterErrors(twitterRes.Errors)
+	if err != nil {
 		return errors.Wrap(err, "trigger CRC response errors")
 	}
-
 	return nil
 }
 
@@ -206,13 +215,40 @@ func (s *speaker) RegisterWebhook() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed decoding register webhook response")
 	}
-	if len(twitterRes.Errors) > 0 {
-		err = twitterRes.Errors[0]
-		for _, twitterErr := range twitterRes.Errors[1:] {
-			err = multierror.Append(err, twitterErr)
-		}
+
+	err = parseTwitterErrors(twitterRes.Errors)
+	if err != nil {
 		return "", errors.Wrap(err, "register webhook response errors")
 	}
-
 	return twitterRes.ID, nil
+}
+
+func (s *speaker) SubscribeUser() error {
+	subscribeUserPath := "/account_activity/all/:env_name/subscriptions.json"
+	req, err := http.NewRequest("POST", apiPrefix+subscribeUserPath, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed building user subscription request")
+	}
+
+	err = s.authorizeRequest(req)
+	if err != nil {
+		return errors.Wrap(err, "failed authorizing user subscription request")
+	}
+
+	res, err := s.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed requesting user subscription")
+	}
+
+	var twitterRes entities.TwitterResponse
+	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	if err != nil && err != io.EOF {
+		return errors.Wrap(err, "failed decoding trigger CRC response")
+	}
+
+	err = parseTwitterErrors(twitterRes.Errors)
+	if err != nil {
+		return errors.Wrap(err, "subscribe user response errors")
+	}
+	return nil
 }
