@@ -224,7 +224,7 @@ func (s *speaker) RegisterWebhook() (string, error) {
 }
 
 func (s *speaker) SubscribeUser() error {
-	subscribeUserPath := "/account_activity/all/:env_name/subscriptions.json"
+	subscribeUserPath := fmt.Sprintf("/account_activity/all/%s/subscriptions.json", s.conf.TwitterEnvName)
 	req, err := http.NewRequest("POST", apiPrefix+subscribeUserPath, nil)
 	if err != nil {
 		return errors.Wrap(err, "failed building user subscription request")
