@@ -19,7 +19,6 @@ import (
 	"github.com/yisaj/heavens_throne/config"
 	"github.com/yisaj/heavens_throne/entities"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
