@@ -14,6 +14,7 @@ COPY entities entities
 COPY config config
 COPY twitlisten twitlisten
 COPY twitspeak twitspeak
+COPY input input
 COPY main.go main.go
 
 # build the app
