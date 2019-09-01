@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 type Player struct {
@@ -84,4 +83,13 @@ type TwitterError struct {
 
 func (te TwitterError) Error() string {
 	return fmt.Sprintf("Twitter Err %d: %s", te.Code, te.Message)
+}
+
+type Event struct {
+	DirectMessageEvents []struct {
+		SenderID    string `json:"sender_id"`
+		MessageData struct {
+			Text string
+		} `json:"message_data"`
+	} `json:"direct_message_events"`
 }

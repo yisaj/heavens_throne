@@ -4,10 +4,13 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/yisaj/heavens_throne/config"
+	"github.com/yisaj/heavens_throne/entities"
+	"github.com/yisaj/heavens_throne/input"
 
 	"github.com/sirupsen/logrus"
 )
@@ -16,13 +19,15 @@ type handler struct {
 	mux        *http.ServeMux
 	logger     *logrus.Logger
 	WebhooksID string
+	dmParser   input.DMParser
 }
 
-func NewHandler(conf *config.Config, logger *logrus.Logger) http.Handler {
+func NewHandler(conf *config.Config, logger *logrus.Logger, dmParser input.DMParser) http.Handler {
 	h := &handler{
 		http.NewServeMux(),
 		logger,
 		"",
+		dmParser,
 	}
 
 	h.mux.HandleFunc(conf.Endpoint, func(w http.ResponseWriter, r *http.Request) {
@@ -65,10 +70,21 @@ func (h *handler) handleCRC(w http.ResponseWriter, r *http.Request, secret strin
 }
 
 func (h *handler) handleEvent(w http.ResponseWriter, r *http.Request) {
+	var event entities.Event
+	err := json.NewDecoder(r.Body).Decode(&event)
+	if err == nil {
+		for _, messageEvent := range event.DirectMessageEvents {
+			err = h.dmParser.ParseDM(r.Context(), messageEvent.SenderID, messageEvent.MessageData.Text)
+			if err != nil {
+				// TODO: handle this error in a sensible way
+			}
+		}
+	}
+
 	w.WriteHeader(200)
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.logger.Infof("request %s %s", r.Method, r.URL.Path)
+	h.logger.Debugf("request %s %s", r.Method, r.URL.Path)
 	h.mux.ServeHTTP(w, r)
 }

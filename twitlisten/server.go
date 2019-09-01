@@ -3,6 +3,7 @@ package twitlisten
 import (
 	"context"
 	"crypto/tls"
+	"github.com/yisaj/heavens_throne/input"
 	"net/http"
 	"time"
 
@@ -45,7 +46,9 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	}()
 
 	// build the twitter webhooks server
-	twitterHandler := NewHandler(conf, logger)
+	inputHandler := input.NewInputHandler(resource, speaker)
+	dmParser := input.NewDMParser(inputHandler)
+	twitterHandler := NewHandler(conf, logger, dmParser)
 	server := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,

@@ -21,6 +21,7 @@ type InputHandler interface {
 	Quit(ctx context.Context, recipientID string) error
 	ToggleUpdates(ctx context.Context, recipientID string) error
 	InvalidCommand(ctx context.Context, recipientID string) error
+	Echo(ctx context.Context, recipientID string, msg string) error
 }
 
 type handler struct {
@@ -67,10 +68,12 @@ Location: %s
 		msg := fmt.Sprintf(statusFormat, player.FormatOrder(), player.FormatClass(), player.Experience, player.Location)
 		err = h.speaker.SendDM(recipientID, msg)
 	}
+
+	return nil
 }
 
 func (h *handler) Logistics(ctx context.Context, recipientID string) error {
-
+	return nil
 }
 
 func (h *handler) Join(ctx context.Context, recipientID string, order string) error {
@@ -97,29 +100,33 @@ LOCATION: %s
 
 	err = h.speaker.SendDM(recipientID, fmt.Sprintf(joinFormat, player.FormatOrder(), player.FormatClass(), player.Location))
 	if err != nil {
-		errors.Wrap(err, "failed to send join message")
+		return errors.Wrap(err, "failed to send join message")
 	}
 	return nil
 }
 
 func (h *handler) Move(ctx context.Context, recipientID string, location string) error {
-
+	return nil
 }
 
 func (h *handler) Advance(ctx context.Context, recipientID string, class string) error {
-
+	return nil
 }
 
 func (h *handler) Quit(ctx context.Context, recipientID string) error {
-
+	return nil
 }
 
 func (h *handler) ToggleUpdates(ctx context.Context, recipientID string) error {
-
+	return nil
 }
 
 func (h *handler) InvalidCommand(ctx context.Context, recipientID string) error {
+	return nil
+}
 
+func (h *handler) Echo(ctx context.Context, recipientID string, msg string) error {
+	return h.speaker.SendDM(recipientID, "Just got the message: "+msg)
 }
 
 func (h *handler) notPlaying(ctx context.Context, recipientID string) error {
