@@ -65,7 +65,7 @@ Location: %s
 	if player != nil {
 		err = h.notPlaying(ctx, recipientID)
 	} else {
-		msg := fmt.Sprintf(statusFormat, player.FormatOrder(), player.FormatClass(), player.Experience, player.Location)
+		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, player.Location)
 		err = h.speaker.SendDM(recipientID, msg)
 	}
 
@@ -98,7 +98,7 @@ LOCATION: %s
 		return errors.Wrap(err, "failed joining new player")
 	}
 
-	err = h.speaker.SendDM(recipientID, fmt.Sprintf(joinFormat, player.FormatOrder(), player.FormatClass(), player.Location))
+	err = h.speaker.SendDM(recipientID, fmt.Sprintf(joinFormat, player.MartialOrder, player.FormatClass(), player.Location))
 	if err != nil {
 		return errors.Wrap(err, "failed to send join message")
 	}

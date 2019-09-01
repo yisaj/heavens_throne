@@ -19,16 +19,6 @@ type Player struct {
 	Rank           int16
 }
 
-func (p Player) FormatOrder() string {
-	translation := map[string]string{
-		"staghorn":  "Staghorn Sect",
-		"gorgona":   "Order Gorgona",
-		"baaturate": "The Baaturate",
-	}
-
-	return translation[p.MartialOrder]
-}
-
 func (p Player) FormatClass() string {
 	classTranslation := map[string]string{
 		"recruit":       "Recruit",

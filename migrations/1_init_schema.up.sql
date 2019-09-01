@@ -1,4 +1,4 @@
-CREATE TYPE martialorder AS ENUM ('staghorn', 'gorgona', 'baaturate');
+CREATE TYPE martialorder AS ENUM ('Staghorn Sect', 'Order Gorgona', 'The Baaturate');
 CREATE TYPE playerclass AS ENUM (
     'recruit',
     'infantry', 'spear', 'glaivemaster', 'sword', 'legionary',
