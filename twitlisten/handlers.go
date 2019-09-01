@@ -74,9 +74,11 @@ func (h *handler) handleEvent(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&event)
 	if err == nil {
 		for _, messageEvent := range event.DirectMessageEvents {
-			err = h.dmParser.ParseDM(r.Context(), messageEvent.SenderID, messageEvent.MessageData.Text)
+			recipientID := messageEvent.MessageCreate.SenderID
+			msg := messageEvent.MessageCreate.MessageData.Text
+			err = h.dmParser.ParseDM(r.Context(), recipientID, msg)
 			if err != nil {
-				// TODO: handle this error in a sensible way
+				h.logger.WithError(err).Error("failed parsing direct message")
 			}
 		}
 	}

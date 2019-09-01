@@ -87,9 +87,11 @@ func (te TwitterError) Error() string {
 
 type Event struct {
 	DirectMessageEvents []struct {
-		SenderID    string `json:"sender_id"`
-		MessageData struct {
-			Text string
-		} `json:"message_data"`
+		MessageCreate struct {
+			SenderID    string `json:"sender_id"`
+			MessageData struct {
+				Text string
+			} `json:"message_data"`
+		} `json:"message_create"`
 	} `json:"direct_message_events"`
 }
