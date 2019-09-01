@@ -19,6 +19,7 @@ import (
 	"github.com/yisaj/heavens_throne/config"
 	"github.com/yisaj/heavens_throne/entities"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -71,17 +72,6 @@ func generateNonce(length int) string {
 	}
 
 	return *(*string)(unsafe.Pointer(&nonce))
-}
-
-func parseTwitterErrors(errors []entities.TwitterError) error {
-	if len(errors) > 0 {
-		var err error = errors[0]
-		for _, twitterErr := range errors[1:] {
-			err = multierror.Append(err, twitterErr)
-		}
-		return err
-	}
-	return nil
 }
 
 func (s *speaker) authorizeRequest(req *http.Request) error {
