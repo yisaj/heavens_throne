@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/yisaj/heavens_throne/database"
 	"net/http"
+	"strings"
 
 	"github.com/yisaj/heavens_throne/config"
 	"github.com/yisaj/heavens_throne/entities"
@@ -75,7 +77,7 @@ func (h *handler) handleEvent(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		for _, messageEvent := range event.DirectMessageEvents {
 			recipientID := messageEvent.MessageCreate.SenderID
-			msg := messageEvent.MessageCreate.MessageData.Text
+			msg := strings.ToLower(messageEvent.MessageCreate.MessageData.Text)
 			err = h.dmParser.ParseDM(r.Context(), recipientID, msg)
 			if err != nil {
 				h.logger.WithError(err).Error("failed parsing direct message")

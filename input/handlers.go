@@ -37,11 +37,23 @@ func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeake
 }
 
 func (h *handler) Help(ctx context.Context, recipientID string) error {
-	const helpMessage = `
-
+	const newPlayerHelp = `
+	Type !join [order] to join.
+`
+	const activePlayerHelp = `
+	!status to see your status.
 `
 
-	err := h.speaker.SendDM(recipientID, helpMessage)
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed checking player activeness")
+	}
+	if player == nil {
+		err = h.speaker.SendDM(recipientID, newPlayerHelp)
+	} else {
+		err = h.speaker.SendDM(recipientID, activePlayerHelp)
+	}
+
 	if err != nil {
 		return errors.Wrap(err, "failed sending help message")
 	}
@@ -63,8 +75,6 @@ Location: %s
 		return errors.Wrap(err, "failed sending player status")
 	}
 	if player != nil {
-		err = h.notPlaying(ctx, recipientID)
-	} else {
 		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, player.Location)
 		err = h.speaker.SendDM(recipientID, msg)
 	}
@@ -83,17 +93,42 @@ ORDER: %s
 CLASS: %s
 LOCATION: %s
 `
+	const invalidOrder = `
+Invalid order. Please select from 'staghorn', 'gorgana', or 'baaturate'.
+`
+	const alreadyPlaying = `
+You're already playing.
+`
+
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed checking player during join")
+	}
+	if player != nil {
+		err = h.speaker.SendDM(recipientID, alreadyPlaying)
+		if err != nil {
+			return errors.Wrap(err, "failed to send already playing message")
+		}
+		return nil
+	}
+
 	// TODO: handle starting location of new users
 	var orderName string
 	if strings.Contains(order, "staghorn") {
-		orderName = "staghorn"
+		orderName = "Staghorn Sect"
 	} else if strings.Contains(order, "gorgona") {
-		orderName = "gorgona"
+		orderName = "Order Gorgona"
 	} else if strings.Contains(order, "baaturate") {
-		orderName = "baaturate"
+		orderName = "The Baaturate"
+	} else {
+		err := h.speaker.SendDM(recipientID, invalidOrder)
+		if err != nil {
+			return errors.Wrap(err, "failed to send invalid order message")
+		}
+		return nil
 	}
 
-	player, err := h.resource.CreatePlayer(ctx, recipientID, orderName, "location")
+	player, err = h.resource.CreatePlayer(ctx, recipientID, orderName, "location")
 	if err != nil {
 		return errors.Wrap(err, "failed joining new player")
 	}
@@ -127,16 +162,4 @@ func (h *handler) InvalidCommand(ctx context.Context, recipientID string) error 
 
 func (h *handler) Echo(ctx context.Context, recipientID string, msg string) error {
 	return h.speaker.SendDM(recipientID, "Just got the message: "+msg)
-}
-
-func (h *handler) notPlaying(ctx context.Context, recipientID string) error {
-	const notPlayingMessage = `
-
-`
-
-	err := h.speaker.SendDM(recipientID, notPlayingMessage)
-	if err != nil {
-		return errors.Wrap(err, "failed sending not playing message")
-	}
-	return nil
 }
