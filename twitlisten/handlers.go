@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/yisaj/heavens_throne/database"
 	"net/http"
 	"strings"
 

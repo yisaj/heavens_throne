@@ -238,7 +238,7 @@ func (s *speaker) SendDM(userID string, msg string) error {
 
 	var twitterRes entities.TwitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding post direct message response")
 	}
 
