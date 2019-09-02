@@ -3,6 +3,8 @@ package input
 import (
 	"context"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 type DMParser interface {
@@ -11,11 +13,13 @@ type DMParser interface {
 
 type parser struct {
 	inputHandler InputHandler
+	logger       *logrus.Logger
 }
 
-func NewDMParser(inputHandler InputHandler) DMParser {
+func NewDMParser(inputHandler InputHandler, logger *logrus.Logger) DMParser {
 	return &parser{
 		inputHandler,
+		logger,
 	}
 }
 
@@ -28,6 +32,8 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 	bangString := msg[strings.IndexByte(msg, '!'):] + " "
 	tokenizedCommand := strings.SplitN(bangString, " ", 2)
 	command, argument := tokenizedCommand[0], tokenizedCommand[1]
+
+	p.logger.Infof("got command: `%s`, argument: `%s`", command, argument)
 
 	switch command {
 	case "!help":

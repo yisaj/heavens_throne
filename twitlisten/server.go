@@ -47,7 +47,7 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 
 	// build the twitter webhooks server
 	inputHandler := input.NewInputHandler(resource, speaker)
-	dmParser := input.NewDMParser(inputHandler)
+	dmParser := input.NewDMParser(inputHandler, logger)
 	twitterHandler := NewHandler(conf, logger, dmParser)
 	server := &http.Server{
 		ReadTimeout:  5 * time.Second,
