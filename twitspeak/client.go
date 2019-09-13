@@ -180,7 +180,7 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 func (s *speaker) GetWebhook() (string, error) {
 	getWebhookPath := fmt.Sprintf("/account_activity/all/%s/webhooks.json", s.conf.TwitterEnvName)
 
-	req, err := http.NewRequest("GET", getWebhookPath, nil)
+	req, err := http.NewRequest("GET", apiPrefix+getWebhookPath, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "failed building get webhooks request")
 	}
