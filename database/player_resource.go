@@ -10,11 +10,11 @@ import (
 )
 
 type PlayerResource interface {
-	CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location string) (*entities.Player, error)
+	CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error)
 	GetPlayer(ctx context.Context, twitterID string) (*entities.Player, error)
 }
 
-func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location string) (*entities.Player, error) {
+func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error) {
 	query := `INSERT INTO player (twitter_id, martial_order, location) VALUES ($1, $2, $3) RETURNING *`
 
 	var player entities.Player

@@ -133,7 +133,12 @@ You're already playing.
 		return nil
 	}
 
-	player, err = h.resource.CreatePlayer(ctx, recipientID, orderName, "location")
+	locationID, err := h.resource.GetTempleLocation(ctx, orderName)
+	if err != nil {
+		return errors.Wrap(err, "failed getting default location")
+	}
+
+	player, err = h.resource.CreatePlayer(ctx, recipientID, orderName, locationID)
 	if err != nil {
 		return errors.Wrap(err, "failed joining new player")
 	}
