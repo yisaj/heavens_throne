@@ -76,6 +76,9 @@ func (h *handler) handleEvent(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		for _, messageEvent := range event.DirectMessageEvents {
 			recipientID := messageEvent.MessageCreate.SenderID
+			if recipientID == event.ForUserID {
+				continue
+			}
 			msg := strings.ToLower(messageEvent.MessageCreate.MessageData.Text)
 			err = h.dmParser.ParseDM(r.Context(), recipientID, msg)
 			if err != nil {

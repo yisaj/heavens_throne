@@ -244,8 +244,10 @@ func (s *speaker) RegisterWebhook() (string, error) {
 }
 
 func (s *speaker) SendDM(userID string, msg string) error {
-	// send a direct message to a user
-	msg = strings.ReplaceAll(msg, "\n", `\n`)
+	// escape common control characters
+	replacer := strings.NewReplacer("\n", `\n`, "\r", `\r`, "\t", `\t`)
+	msg = replacer.Replace(msg)
+
 	sendDMPath := "/direct_messages/events/new.json"
 	eventFmt := `{"event": { "type": "message_create", 
 		"message_create": {
