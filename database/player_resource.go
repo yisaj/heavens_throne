@@ -44,7 +44,7 @@ func (c *connection) GetPlayer(ctx context.Context, twitterID string) (*entities
 }
 
 func (c *connection) DeactivatePlayer(ctx context.Context, twitterID string) error {
-	query := `UPDATE player SET active=false WHERE id=$1`
+	query := `UPDATE player SET active=false WHERE twitter_id=$1`
 
 	_, err := c.db.ExecContext(ctx, query, twitterID)
 	if err != nil {
@@ -64,7 +64,7 @@ func (c *connection) ClearPlayers(ctx context.Context) error {
 }
 
 func (c *connection) DeletePlayer(ctx context.Context, twitterID string) error {
-	query := `DELETE FROM player WHERE id=$1`
+	query := `DELETE FROM player WHERE twitter_id=$1`
 
 	_, err := c.db.ExecContext(ctx, query, twitterID)
 	if err != nil {
