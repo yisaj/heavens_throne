@@ -8,7 +8,7 @@ CREATE TYPE playerclass AS ENUM (
 
 CREATE TABLE location
 (
-    id    serial PRIMARY KEY,
+    id    integer PRIMARY KEY,
     name  text NOT NULL UNIQUE,
     owner martialorder
 );

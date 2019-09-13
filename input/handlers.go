@@ -75,7 +75,12 @@ Location: %s
 		return errors.Wrap(err, "failed sending player status")
 	}
 	if player != nil {
-		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, player.Location)
+		location, err := h.resource.GetLocation(ctx, player.Location)
+		if err != nil || location == nil {
+			return errors.Wrap(err, "failed sending player status")
+		}
+
+		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name)
 		err = h.speaker.SendDM(recipientID, msg)
 	}
 

@@ -35,7 +35,7 @@ func (c *connection) GetPlayer(ctx context.Context, twitterID string) (*entities
 		return nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed getting player")
 	}
 	return &player, nil
 }

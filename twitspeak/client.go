@@ -214,6 +214,7 @@ func (s *speaker) RegisterWebhook() (string, error) {
 
 func (s *speaker) SendDM(userID string, msg string) error {
 	// send a direct message to a user
+	msg = strings.ReplaceAll(msg, "\n", `\n`)
 	sendDMPath := "/direct_messages/events/new.json"
 	eventFmt := `{"event": { "type": "message_create", 
 		"message_create": {
@@ -238,7 +239,7 @@ func (s *speaker) SendDM(userID string, msg string) error {
 
 	var twitterRes entities.TwitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
-	if err != nil && err != io.EOF {
+	if err != nil {
 		return errors.Wrap(err, "failed decoding post direct message response")
 	}
 

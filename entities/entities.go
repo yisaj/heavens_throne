@@ -13,7 +13,7 @@ type Player struct {
 	Active         bool
 	Dead           bool
 	MartialOrder   string `db:"martial_order"`
-	Location       string
+	Location       int32
 	Class          string
 	Experience     int16
 	Rank           int16
@@ -48,6 +48,12 @@ func (p Player) FormatClass() string {
 	}
 
 	return fmt.Sprintf("%s %s", classTranslation[p.Class], rankTranslation[p.Rank])
+}
+
+type Location struct {
+	ID           int32
+	Name         string
+	MartialOrder string
 }
 
 type TwitterResponse struct {

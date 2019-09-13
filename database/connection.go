@@ -20,6 +20,7 @@ const (
 )
 
 type Resource interface {
+	LocationResource
 	PlayerResource
 	WebhooksResource
 }
