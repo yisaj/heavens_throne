@@ -67,7 +67,7 @@ func (h *handler) Status(ctx context.Context, recipientID string) error {
 Order: %s
 Class: %s
 Experience: %d
-Location: %d
+Location: %s
 `
 
 	player, err := h.resource.GetPlayer(ctx, recipientID)
@@ -104,15 +104,25 @@ Invalid order. Please select from 'staghorn', 'gorgona', or 'baaturate'.
 	const alreadyPlaying = `
 You're already playing.
 `
+	const deactivatedPlayer = `
+The Gate is closed to you. At least for this cycle.
+`
 
 	player, err := h.resource.GetPlayer(ctx, recipientID)
 	if err != nil {
 		return errors.Wrap(err, "failed checking player during join")
 	}
 	if player != nil {
-		err = h.speaker.SendDM(recipientID, alreadyPlaying)
-		if err != nil {
-			return errors.Wrap(err, "failed to send already playing message")
+		if player.Active {
+			err = h.speaker.SendDM(recipientID, alreadyPlaying)
+			if err != nil {
+				return errors.Wrap(err, "failed to send already playing message")
+			}
+		} else {
+			err = h.speaker.SendDM(recipientID, deactivatedPlayer)
+			if err != nil {
+				return errors.Wrap(err, "failed to send deactivated player message")
+			}
 		}
 		return nil
 	}
@@ -157,7 +167,21 @@ func (h *handler) Advance(ctx context.Context, recipientID string, class string)
 	return nil
 }
 
+// TODO: remember to deactivate instead of deleting
 func (h *handler) Quit(ctx context.Context, recipientID string) error {
+	quitMsg := `
+Heaven's Gate closes behind you.
+`
+
+	err := h.resource.DeletePlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed quitting game")
+	}
+
+	err = h.speaker.SendDM(recipientID, quitMsg)
+	if err != nil {
+		return errors.Wrap(err, "failed to send quit message")
+	}
 	return nil
 }
 

@@ -96,7 +96,8 @@ USER INTERFACE
             Advance your class given a high enough level if class is given.
             Otherwise display available advances.
         - !quit
-            Quit the game. You can rejoin again with !join.
+            Quit the game. You can rejoin again with !join after the current
+            game ends.
         - !toggleupdates
             Toggle daily update messages.
 
