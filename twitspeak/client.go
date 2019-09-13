@@ -40,6 +40,7 @@ type speaker struct {
 
 type TwitterSpeaker interface {
 	TriggerCRC(webhookID string) error
+	GetWebhook() (string, error)
 	RegisterWebhook() (string, error)
 	SendDM(userID string, msg string) error
 	SubscribeUser() error
@@ -174,6 +175,36 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 		return errors.Wrap(err, "trigger CRC response errors")
 	}
 	return nil
+}
+
+func (s *speaker) GetWebhook() (string, error) {
+	getWebhookPath := fmt.Sprintf("/account_activity/all/%s/webhooks.json", s.conf.TwitterEnvName)
+
+	req, err := http.NewRequest("GET", getWebhookPath, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "failed building get webhooks request")
+	}
+
+	err = s.authorizeRequest(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed authorizing get webhooks request")
+	}
+
+	res, err := s.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed requesting get webhook")
+	}
+
+	var webhooks []interface{}
+	err = json.NewDecoder(res.Body).Decode(&webhooks)
+	if err != nil {
+		return "", errors.Wrap(err, "failed decoding get webhooks response")
+	}
+	if len(webhooks) > 0 {
+		webhook := webhooks[0].(map[string]interface{})
+		return webhook["id"].(string), nil
+	}
+	return "", nil
 }
 
 func (s *speaker) RegisterWebhook() (string, error) {

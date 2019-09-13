@@ -20,7 +20,13 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	// check for webhooks id in database
 	webhooksID, err := resource.GetWebhooksID(context.TODO())
 	if err != nil {
-		logger.WithError(err).Fatal("error while performing initial webhooks id check")
+		logger.WithError(err).Fatal("failed querying database for webhook id")
+	}
+
+	// check twitter for webhooks id
+	webhooksID, err = speaker.GetWebhook()
+	if err != nil {
+		logger.WithError(err).Fatal("failed querying twitter for webhook id")
 	}
 
 	// autocert manager
