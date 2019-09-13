@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
@@ -53,7 +54,7 @@ func (p Player) FormatClass() string {
 type Location struct {
 	ID    int32
 	Name  string
-	Owner string
+	Owner sql.NullString
 }
 
 type TwitterResponse struct {
