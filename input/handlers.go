@@ -67,7 +67,7 @@ func (h *handler) Status(ctx context.Context, recipientID string) error {
 Order: %s
 Class: %s
 Experience: %d
-Location: %s
+Location: %d
 `
 
 	player, err := h.resource.GetPlayer(ctx, recipientID)
@@ -96,7 +96,7 @@ func (h *handler) Join(ctx context.Context, recipientID string, order string) er
 	const joinFormat = `
 ORDER: %s
 CLASS: %s
-LOCATION: %s
+LOCATION: %d
 `
 	const invalidOrder = `
 Invalid order. Please select from 'staghorn', 'gorgona', or 'baaturate'.
@@ -117,7 +117,6 @@ You're already playing.
 		return nil
 	}
 
-	// TODO: handle starting location of new users
 	var orderName string
 	if strings.Contains(order, "staghorn") {
 		orderName = "Staghorn Sect"
@@ -135,7 +134,7 @@ You're already playing.
 
 	locationID, err := h.resource.GetTempleLocation(ctx, orderName)
 	if err != nil {
-		return errors.Wrap(err, "failed getting default location")
+		return errors.Wrap(err, "failed getting starting location")
 	}
 
 	player, err = h.resource.CreatePlayer(ctx, recipientID, orderName, locationID)

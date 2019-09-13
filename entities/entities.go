@@ -51,9 +51,9 @@ func (p Player) FormatClass() string {
 }
 
 type Location struct {
-	ID           int32
-	Name         string
-	MartialOrder string
+	ID    int32
+	Name  string
+	Owner string
 }
 
 type TwitterResponse struct {
