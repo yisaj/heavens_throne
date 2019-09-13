@@ -90,6 +90,6 @@ INSERT INTO adjacent_location (location, adjacent) VALUES
     (40, 35);
 
 INSERT INTO temple (martial_order, location) VALUES ('Staghorn Sect', 39);
-INSERT INTO temple (martial_order, location) VALUES ('Order Gorgana', 11);
+INSERT INTO temple (martial_order, location) VALUES ('Order Gorgona', 11);
 INSERT INTO temple (martial_order, location) VALUES ('The Baaturate', 3);
 

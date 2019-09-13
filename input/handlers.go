@@ -99,7 +99,7 @@ CLASS: %s
 LOCATION: %s
 `
 	const invalidOrder = `
-Invalid order. Please select from 'staghorn', 'gorgana', or 'baaturate'.
+Invalid order. Please select from 'staghorn', 'gorgona', or 'baaturate'.
 `
 	const alreadyPlaying = `
 You're already playing.
