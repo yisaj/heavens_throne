@@ -329,6 +329,14 @@ You will now receive daily personal battle reports.
 }
 
 func (h *handler) InvalidCommand(ctx context.Context, recipientID string) error {
+	const invalid = `
+That's not something I understand. Try seeking !help.
+`
+
+	err := h.speaker.SendDM(recipientID, invalid)
+	if err != nil {
+		return errors.Wrap(err, "failed sending invalid command message")
+	}
 	return nil
 }
 
