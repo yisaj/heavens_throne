@@ -155,7 +155,8 @@ func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipi
 
 	var msg strings.Builder
 	msg.WriteString("Current\tNext\n")
-	for i, j := 0, 0; i < len(currentLogistics) || j < len(nextLogistics); {
+	i, j := 0, 0
+	for i < len(currentLogistics) && j < len(nextLogistics) {
 		current, next := currentLogistics[i], nextLogistics[j]
 		if current.LocationName < next.LocationName {
 			msg.WriteString(fmt.Sprintf("\t%s - %d\n", current.LocationName, current.Count))
@@ -168,6 +169,16 @@ func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipi
 			i++
 			j++
 		}
+	}
+	for i < len(currentLogistics) {
+		current := currentLogistics[i]
+		msg.WriteString(fmt.Sprintf("\t%s - %d\n", current.LocationName, current.Count))
+		i++
+	}
+	for j < len(nextLogistics) {
+		next := nextLogistics[j]
+		msg.WriteString(fmt.Sprintf("%s - %d\t\n", next.LocationName, next.Count))
+		j++
 	}
 
 	err = h.speaker.SendDM(recipientID, msg.String())
