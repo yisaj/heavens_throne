@@ -3,12 +3,13 @@ package input
 import (
 	"context"
 	"fmt"
-	"github.com/yisaj/heavens_throne/entities"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/yisaj/heavens_throne/database"
+	"github.com/yisaj/heavens_throne/entities"
 	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/pkg/errors"
@@ -135,10 +136,33 @@ func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipi
 	if err != nil {
 		return errors.Wrap(err, "failed getting logistics")
 	}
+	nextLogistics, err := h.resource.GetNextLogistics(ctx, player.MartialOrder)
+	if err != nil {
+		return errors.Wrap(err, "failed getting logistics")
+	}
+
+	sort.Slice(currentLogistics, func(i int, j int) bool {
+		return currentLogistics[i].LocationName < currentLogistics[j].LocationName
+	})
+	sort.Slice(nextLogistics, func(i int, j int) bool {
+		return nextLogistics[i].LocationName < nextLogistics[j].LocationName
+	})
 
 	var msg strings.Builder
-	for _, logistic := range currentLogistics {
-		msg.WriteString(fmt.Sprintf("%s - %d\n", logistic.LocationName, logistic.Count))
+	msg.WriteString("Current\tNext\n")
+	for i, j := 0, 0; i < len(currentLogistics) && j < len(nextLogistics); {
+		current, next := currentLogistics[i], nextLogistics[j]
+		if current.LocationName < next.LocationName {
+			msg.WriteString(fmt.Sprintf("\t%s - %d\n", current.LocationName, current.Count))
+			i++
+		} else if current.LocationName > next.LocationName {
+			msg.WriteString(fmt.Sprintf("%s - %d\t\n", next.LocationName, next.Count))
+			j++
+		} else {
+			msg.WriteString(fmt.Sprintf("%s - %d\t%s - %d\n", current.LocationName, current.Count, next.LocationName, next.Count))
+			i++
+			j++
+		}
 	}
 
 	err = h.speaker.SendDM(recipientID, msg.String())

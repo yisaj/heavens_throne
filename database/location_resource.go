@@ -13,6 +13,7 @@ type LocationResource interface {
 	GetAdjacentLocations(ctx context.Context, locationID int32) ([]int32, error)
 	GetTempleLocation(ctx context.Context, order string) (int32, error)
 	GetCurrentLogistics(ctx context.Context, order string) ([]entities.Logistic, error)
+	GetNextLogistics(ctx context.Context, order string) ([]entities.Logistic, error)
 }
 
 func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entities.Location, error) {
@@ -49,13 +50,25 @@ func (c *connection) GetTempleLocation(ctx context.Context, order string) (int32
 }
 
 func (c *connection) GetCurrentLogistics(ctx context.Context, order string) ([]entities.Logistic, error) {
-	query := `SELECT location.name, COUNT(player.id) FROM player
-    INNER JOIN player ON player.location WHERE player.martial_order=$1 GROUP BY player.location`
+	query := `SELECT location.name, COUNT(*) FROM player
+    INNER JOIN location ON player.location=location.id WHERE player.martial_order=$1 GROUP BY location.name`
 
 	var logistics []entities.Logistic
 	err := c.db.SelectContext(ctx, &logistics, query, order)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed getting current logistics")
+	}
+	return logistics, nil
+}
+
+func (c *connection) GetNextLogistics(ctx context.Context, order string) ([]entities.Logistic, error) {
+	query := `SELECT location.name, COUNT(*) FROM player
+    INNER JOIN location ON player.next_location=location.id WHERE player.martial_order=$1 GROUP BY location.name`
+
+	var logistics []entities.Logistic
+	err := c.db.SelectContext(ctx, &logistics, query, order)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting next logistics")
 	}
 	return logistics, nil
 }

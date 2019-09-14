@@ -96,6 +96,6 @@ type Event struct {
 }
 
 type Logistic struct {
-	LocationName string
+	LocationName string `db:"name"`
 	Count        int32
 }
