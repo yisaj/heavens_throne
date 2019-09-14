@@ -2,6 +2,8 @@ package input
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"github.com/yisaj/heavens_throne/database"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -13,12 +15,14 @@ type DMParser interface {
 
 type parser struct {
 	inputHandler InputHandler
+	resource     database.Resource
 	logger       *logrus.Logger
 }
 
-func NewDMParser(inputHandler InputHandler, logger *logrus.Logger) DMParser {
+func NewDMParser(inputHandler InputHandler, resource database.Resource, logger *logrus.Logger) DMParser {
 	return &parser{
 		inputHandler,
+		resource,
 		logger,
 	}
 }
@@ -33,26 +37,31 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 	tokenizedCommand := strings.SplitN(bangString, " ", 2)
 	command, argument := tokenizedCommand[0], tokenizedCommand[1]
 
-	p.logger.Infof("got command: `%s`, argument: `%s`", command, argument)
+	player, err := p.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+
+	p.logger.Infof("got command: `%s`, argument: `%s` from ", command, argument)
 
 	switch command {
 	case "!help":
-		return p.inputHandler.Help(ctx, recipientID)
+		return p.inputHandler.Help(ctx, player, recipientID)
 	case "!status":
-		return p.inputHandler.Status(ctx, recipientID)
+		return p.inputHandler.Status(ctx, player, recipientID)
 	case "!logistics":
-		return p.inputHandler.Logistics(ctx, recipientID)
+		return p.inputHandler.Logistics(ctx, player, recipientID)
 	case "!join":
-		return p.inputHandler.Join(ctx, recipientID, argument)
+		return p.inputHandler.Join(ctx, player, recipientID, argument)
 	case "!move":
-		return p.inputHandler.Move(ctx, recipientID, argument)
+		return p.inputHandler.Move(ctx, player, recipientID, argument)
 	case "!advance":
-		return p.inputHandler.Advance(ctx, recipientID, argument)
+		return p.inputHandler.Advance(ctx, player, recipientID, argument)
 	case "!quit":
-		return p.inputHandler.Quit(ctx, recipientID)
+		return p.inputHandler.Quit(ctx, player, recipientID)
 	case "!toggleupdates":
-		return p.inputHandler.ToggleUpdates(ctx, recipientID)
+		return p.inputHandler.ToggleUpdates(ctx, player, recipientID)
 	default:
-		return p.inputHandler.InvalidCommand(ctx, recipientID)
+		return p.inputHandler.InvalidCommand(ctx, player, recipientID)
 	}
 }

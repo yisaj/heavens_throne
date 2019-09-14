@@ -3,6 +3,7 @@ package input
 import (
 	"context"
 	"fmt"
+	"github.com/yisaj/heavens_throne/entities"
 	"regexp"
 	"strconv"
 	"strings"
@@ -61,16 +62,16 @@ var (
 )
 
 type InputHandler interface {
-	Help(ctx context.Context, recipientID string) error
-	Status(ctx context.Context, recipientID string) error
-	Logistics(ctx context.Context, recipientID string) error
-	Join(ctx context.Context, recipientID string, order string) error
-	Move(ctx context.Context, recipientID string, location string) error
-	Advance(ctx context.Context, recipientID string, class string) error
-	Quit(ctx context.Context, recipientID string) error
-	ToggleUpdates(ctx context.Context, recipientID string) error
-	InvalidCommand(ctx context.Context, recipientID string) error
-	Echo(ctx context.Context, recipientID string, msg string) error
+	Help(ctx context.Context, player *entities.Player, recipientID string) error
+	Status(ctx context.Context, player *entities.Player, recipientID string) error
+	Logistics(ctx context.Context, player *entities.Player, recipientID string) error
+	Join(ctx context.Context, player *entities.Player, recipientID string, order string) error
+	Move(ctx context.Context, player *entities.Player, recipientID string, location string) error
+	Advance(ctx context.Context, player *entities.Player, recipientID string, class string) error
+	Quit(ctx context.Context, player *entities.Player, recipientID string) error
+	ToggleUpdates(ctx context.Context, player *entities.Player, recipientID string) error
+	InvalidCommand(ctx context.Context, player *entities.Player, recipientID string) error
+	Echo(ctx context.Context, player *entities.Player, recipientID string, msg string) error
 }
 
 type handler struct {
@@ -85,7 +86,7 @@ func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeake
 	}
 }
 
-func (h *handler) Help(ctx context.Context, recipientID string) error {
+func (h *handler) Help(ctx context.Context, player *entities.Player, recipientID string) error {
 	const newPlayerHelp = `
 	Type !join [order] to join.
 `
@@ -93,10 +94,7 @@ func (h *handler) Help(ctx context.Context, recipientID string) error {
 	!status to see your status.
 `
 
-	player, err := h.resource.GetPlayer(ctx, recipientID)
-	if err != nil {
-		return errors.Wrap(err, "failed checking player activeness")
-	}
+	var err error
 	if player == nil {
 		err = h.speaker.SendDM(recipientID, newPlayerHelp)
 	} else {
@@ -109,7 +107,7 @@ func (h *handler) Help(ctx context.Context, recipientID string) error {
 	return nil
 }
 
-func (h *handler) Status(ctx context.Context, recipientID string) error {
+func (h *handler) Status(ctx context.Context, player *entities.Player, recipientID string) error {
 	// TODO: write a real status message
 	// TODO: handle available advances text
 	const statusFormat = `
@@ -119,10 +117,6 @@ Experience: %d
 Location: %s
 `
 
-	player, err := h.resource.GetPlayer(ctx, recipientID)
-	if err != nil {
-		return errors.Wrap(err, "failed sending player status")
-	}
 	if player != nil {
 		location, err := h.resource.GetLocation(ctx, player.Location)
 		if err != nil || location == nil {
@@ -136,11 +130,25 @@ Location: %s
 	return nil
 }
 
-func (h *handler) Logistics(ctx context.Context, recipientID string) error {
+func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipientID string) error {
+	currentLogistics, err := h.resource.GetCurrentLogistics(ctx, player.MartialOrder)
+	if err != nil {
+		return errors.Wrap(err, "failed getting logistics")
+	}
+
+	var msg strings.Builder
+	for _, logistic := range currentLogistics {
+		msg.WriteString(fmt.Sprintf("%s - %d\n", logistic.LocationName, logistic.Count))
+	}
+
+	err = h.speaker.SendDM(recipientID, msg.String())
+	if err != nil {
+		return errors.Wrap(err, "failed getting logistics")
+	}
 	return nil
 }
 
-func (h *handler) Join(ctx context.Context, recipientID string, order string) error {
+func (h *handler) Join(ctx context.Context, player *entities.Player, recipientID string, order string) error {
 	// TODO: write a real join message
 	const joinFormat = `
 ORDER: %s
@@ -156,11 +164,7 @@ You're already playing.
 	const deactivatedPlayer = `
 The Gate is closed to you. At least for this cycle.
 `
-
-	player, err := h.resource.GetPlayer(ctx, recipientID)
-	if err != nil {
-		return errors.Wrap(err, "failed checking player during join")
-	}
+	var err error
 	if player != nil {
 		if player.Active {
 			err = h.speaker.SendDM(recipientID, alreadyPlaying)
@@ -208,7 +212,7 @@ The Gate is closed to you. At least for this cycle.
 	return nil
 }
 
-func (h *handler) Move(ctx context.Context, recipientID string, locationString string) error {
+func (h *handler) Move(ctx context.Context, player *entities.Player, recipientID string, locationString string) error {
 	const notFound = `
 That's not a place that I know of.
 `
@@ -238,11 +242,6 @@ You are now moving to %s.
 			}
 			return nil
 		}
-	}
-
-	player, err := h.resource.GetPlayer(ctx, recipientID)
-	if err != nil {
-		return errors.Wrap(err, "failed moving player")
 	}
 
 	if locationID != player.Location {
@@ -282,12 +281,12 @@ You are now moving to %s.
 	return nil
 }
 
-func (h *handler) Advance(ctx context.Context, recipientID string, class string) error {
+func (h *handler) Advance(ctx context.Context, player *entities.Player, recipientID string, class string) error {
 	return nil
 }
 
 // TODO: remember to deactivate instead of deleting
-func (h *handler) Quit(ctx context.Context, recipientID string) error {
+func (h *handler) Quit(ctx context.Context, player *entities.Player, recipientID string) error {
 	quitMsg := `
 Heaven's Gate closes behind you.
 `
@@ -304,7 +303,7 @@ Heaven's Gate closes behind you.
 	return nil
 }
 
-func (h *handler) ToggleUpdates(ctx context.Context, recipientID string) error {
+func (h *handler) ToggleUpdates(ctx context.Context, player *entities.Player, recipientID string) error {
 	const noUpdates = `
 You will no longer receive daily personal battle reports.
 `
@@ -328,7 +327,7 @@ You will now receive daily personal battle reports.
 	return nil
 }
 
-func (h *handler) InvalidCommand(ctx context.Context, recipientID string) error {
+func (h *handler) InvalidCommand(ctx context.Context, player *entities.Player, recipientID string) error {
 	const invalid = `
 That's not something I understand. Try seeking !help.
 `
@@ -340,6 +339,10 @@ That's not something I understand. Try seeking !help.
 	return nil
 }
 
-func (h *handler) Echo(ctx context.Context, recipientID string, msg string) error {
-	return h.speaker.SendDM(recipientID, "Just got the message: "+msg)
+func (h *handler) Echo(ctx context.Context, player *entities.Player, recipientID string, msg string) error {
+	err := h.speaker.SendDM(recipientID, "Just got the message: "+msg)
+	if err != nil {
+		return errors.Wrap(err, "failed sending echo message")
+	}
+	return nil
 }

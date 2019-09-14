@@ -94,3 +94,8 @@ type Event struct {
 		} `json:"message_create"`
 	} `json:"direct_message_events"`
 }
+
+type Logistic struct {
+	LocationName string
+	Count        int32
+}
