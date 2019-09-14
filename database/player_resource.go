@@ -16,6 +16,7 @@ type PlayerResource interface {
 	ClearPlayers(ctx context.Context) error
 	DeletePlayer(ctx context.Context, twitterID string) error
 	MovePlayer(ctx context.Context, twitterID string, destination int32) error
+	TogglePlayerUpdates(ctx context.Context, twitterID string) (bool, error)
 }
 
 func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error) {
@@ -82,4 +83,15 @@ func (c *connection) MovePlayer(ctx context.Context, twitterID string, destinati
 		return errors.Wrap(err, "failed updating player location")
 	}
 	return nil
+}
+
+func (c *connection) TogglePlayerUpdates(ctx context.Context, twitterID string) (bool, error) {
+	query := `UPDATE player SET receive_updates = NOT receive_updates RETURNING receive_updates`
+
+	var receiveUpdates bool
+	err := c.db.GetContext(ctx, &receiveUpdates, query)
+	if err != nil {
+		return false, errors.Wrap(err, "failed toggling player updates setting")
+	}
+	return receiveUpdates, nil
 }

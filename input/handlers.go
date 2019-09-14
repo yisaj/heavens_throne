@@ -305,6 +305,26 @@ Heaven's Gate closes behind you.
 }
 
 func (h *handler) ToggleUpdates(ctx context.Context, recipientID string) error {
+	const noUpdates = `
+You will no longer receive daily personal battle reports.
+`
+	const yesUpdates = `
+You will now receive daily personal battle reports.
+`
+
+	receiveUpdates, err := h.resource.TogglePlayerUpdates(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed toggling updates")
+	}
+
+	if receiveUpdates {
+		err = h.speaker.SendDM(recipientID, yesUpdates)
+	} else {
+		err = h.speaker.SendDM(recipientID, noUpdates)
+	}
+	if err != nil {
+		return errors.Wrap(err, "failed sending toggle updates message")
+	}
 	return nil
 }
 
