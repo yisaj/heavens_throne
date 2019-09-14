@@ -15,7 +15,7 @@ type PlayerResource interface {
 	DeactivatePlayer(ctx context.Context, twitterID string) error
 	ClearPlayers(ctx context.Context) error
 	DeletePlayer(ctx context.Context, twitterID string) error
-	MovePlayer(ctx context.Context, twitterID string, destination int32) (*entities.Location, error)
+	MovePlayer(ctx context.Context, twitterID string, destination int32) error
 }
 
 func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error) {
@@ -74,13 +74,12 @@ func (c *connection) DeletePlayer(ctx context.Context, twitterID string) error {
 	return nil
 }
 
-func (c *connection) MovePlayer(ctx context.Context, twitterID string, destination int32) (*entities.Location, error) {
-	query := `UPDATE player SET location=$1 WHERE twitter_id=$2 RETURNING *`
+func (c *connection) MovePlayer(ctx context.Context, twitterID string, destination int32) error {
+	query := `UPDATE player SET location=$1 WHERE twitter_id=$2`
 
-	var location entities.Location
-	err := c.db.GetContext(ctx, &location, query, destination, twitterID)
+	_, err := c.db.ExecContext(ctx, query, destination, twitterID)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed updating player location")
+		return errors.Wrap(err, "failed updating player location")
 	}
-	return &location, nil
+	return nil
 }

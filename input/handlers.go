@@ -267,7 +267,11 @@ You are now moving to %s.
 		}
 	}
 
-	location, err := h.resource.MovePlayer(ctx, recipientID, locationID)
+	err = h.resource.MovePlayer(ctx, recipientID, locationID)
+	if err != nil {
+		return errors.Wrap(err, "failed moving player")
+	}
+	location, err := h.resource.GetLocation(ctx, locationID)
 	if err != nil {
 		return errors.Wrap(err, "failed moving player")
 	}

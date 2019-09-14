@@ -29,7 +29,7 @@ func (c *connection) GetAdjacentLocations(ctx context.Context, locationID int32)
 	query := `SELECT adjacent FROM adjacent_location WHERE location=$1`
 
 	var adjacentLocations []int32
-	err := c.db.GetContext(ctx, &adjacentLocations, query, locationID)
+	err := c.db.SelectContext(ctx, &adjacentLocations, query, locationID)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed getting adajcent locations")
 	}
@@ -40,7 +40,7 @@ func (c *connection) GetTempleLocation(ctx context.Context, order string) (int32
 	query := `SELECT location FROM temple WHERE martial_order=$1`
 
 	var location int32
-	err := c.db.SelectContext(ctx, &location, query, order)
+	err := c.db.GetContext(ctx, &location, query, order)
 	if err != nil {
 		return -1, errors.Wrap(err, "failed getting temple location")
 	}
