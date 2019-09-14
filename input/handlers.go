@@ -116,6 +116,7 @@ Order: %s
 Class: %s
 Experience: %d
 Location: %s
+Next Location: %s
 `
 
 	if player != nil {
@@ -123,8 +124,12 @@ Location: %s
 		if err != nil || location == nil {
 			return errors.Wrap(err, "failed sending player status")
 		}
+		nextLocation, err := h.resource.GetLocation(ctx, player.NextLocation)
+		if err != nil || nextLocation == nil {
+			return errors.Wrap(err, "failed sending player status")
+		}
 
-		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name)
+		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name, nextLocation.Name)
 		err = h.speaker.SendDM(recipientID, msg)
 	}
 
@@ -150,7 +155,7 @@ func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipi
 
 	var msg strings.Builder
 	msg.WriteString("Current\tNext\n")
-	for i, j := 0, 0; i < len(currentLogistics) && j < len(nextLogistics); {
+	for i, j := 0, 0; i < len(currentLogistics) || j < len(nextLogistics); {
 		current, next := currentLogistics[i], nextLogistics[j]
 		if current.LocationName < next.LocationName {
 			msg.WriteString(fmt.Sprintf("\t%s - %d\n", current.LocationName, current.Count))

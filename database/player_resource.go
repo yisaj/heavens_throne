@@ -31,6 +31,7 @@ func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martial
 	return &player, nil
 }
 
+// TODO: populate location information
 func (c *connection) GetPlayer(ctx context.Context, twitterID string) (*entities.Player, error) {
 	query := `SELECT * FROM player WHERE twitter_id=$1 AND active=true`
 
