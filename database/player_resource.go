@@ -19,7 +19,7 @@ type PlayerResource interface {
 }
 
 func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error) {
-	query := `INSERT INTO player (twitter_id, martial_order, location) VALUES ($1, $2, $3) RETURNING *`
+	query := `INSERT INTO player (twitter_id, martial_order, location, next_location) VALUES ($1, $2, $3, $3) RETURNING *`
 
 	var player entities.Player
 	err := c.db.GetContext(ctx, &player, query, twitterID, martialOrder, location)
