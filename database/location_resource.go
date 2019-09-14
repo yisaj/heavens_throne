@@ -26,7 +26,7 @@ func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entiti
 }
 
 func (c *connection) GetAdjacentLocations(ctx context.Context, locationID int32) ([]int32, error) {
-	query := `SELECT adjacent FROM adjacent_location WHERE id=$1`
+	query := `SELECT adjacent FROM adjacent_location WHERE location=$1`
 
 	var adjacentLocations []int32
 	err := c.db.GetContext(ctx, &adjacentLocations, query, locationID)
