@@ -75,7 +75,7 @@ func (c *connection) DeletePlayer(ctx context.Context, twitterID string) error {
 }
 
 func (c *connection) MovePlayer(ctx context.Context, twitterID string, destination int32) error {
-	query := `UPDATE player SET location=$1 WHERE twitter_id=$2`
+	query := `UPDATE player SET next_location=$1 WHERE twitter_id=$2`
 
 	_, err := c.db.ExecContext(ctx, query, destination, twitterID)
 	if err != nil {

@@ -22,6 +22,7 @@ CREATE TABLE player
     dead            boolean      NOT NULL DEFAULT FALSE,
     martial_order   martialorder NOT NULL,
     location        integer REFERENCES location (id),
+    next_location   integer REFERENCES location (id),
     class           playerclass  NOT NULL DEFAULT 'recruit',
     experience      smallint     NOT NULL DEFAULT 0,
     rank            smallint     NOT NULL DEFAULT 1

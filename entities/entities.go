@@ -15,6 +15,7 @@ type Player struct {
 	Dead           bool
 	MartialOrder   string `db:"martial_order"`
 	Location       int32
+	NextLocation   int32 `db:"next_location"`
 	Class          string
 	Experience     int16
 	Rank           int16
