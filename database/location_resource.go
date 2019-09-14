@@ -40,7 +40,7 @@ func (c *connection) GetTempleLocation(ctx context.Context, order string) (int32
 	query := `SELECT location FROM temple WHERE martial_order=$1`
 
 	var location int32
-	err := c.db.GetContext(ctx, &location, query, order)
+	err := c.db.SelectContext(ctx, &location, query, order)
 	if err != nil {
 		return -1, errors.Wrap(err, "failed getting temple location")
 	}
