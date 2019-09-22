@@ -137,6 +137,11 @@ Next Location: %s
 }
 
 func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipientID string) error {
+	const logisticsHeader = `
+Here's all the logistics
+----------------------------
+`
+
 	currentLogistics, err := h.resource.GetCurrentLogistics(ctx, player.MartialOrder)
 	if err != nil {
 		return errors.Wrap(err, "failed getting logistics")
@@ -154,30 +159,30 @@ func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipi
 	})
 
 	var msg strings.Builder
-	msg.WriteString("Current\tNext\n")
+	msg.WriteString(logisticsHeader)
 	i, j := 0, 0
 	for i < len(currentLogistics) && j < len(nextLogistics) {
 		current, next := currentLogistics[i], nextLogistics[j]
 		if current.LocationName < next.LocationName {
-			msg.WriteString(fmt.Sprintf("\t%s - %d\n", current.LocationName, current.Count))
+			msg.WriteString(fmt.Sprintf("%s:  0 -> %d (%+d)\n", current.LocationName, current.Count, current.Count))
 			i++
 		} else if current.LocationName > next.LocationName {
-			msg.WriteString(fmt.Sprintf("%s - %d\t\n", next.LocationName, next.Count))
+			msg.WriteString(fmt.Sprintf("%s: %d -> 0 (%+d)\n", next.LocationName, next.Count, -next.Count))
 			j++
 		} else {
-			msg.WriteString(fmt.Sprintf("%s - %d\t%s - %d\n", current.LocationName, current.Count, next.LocationName, next.Count))
+			msg.WriteString(fmt.Sprintf("%s: %d -> %d (%+d)\n", current.LocationName, current.Count, next.Count, next.Count-current.Count))
 			i++
 			j++
 		}
 	}
 	for i < len(currentLogistics) {
 		current := currentLogistics[i]
-		msg.WriteString(fmt.Sprintf("\t%s - %d\n", current.LocationName, current.Count))
+		msg.WriteString(fmt.Sprintf("%s: 0 -> %d (%+d)\n", current.LocationName, current.Count, current.Count))
 		i++
 	}
 	for j < len(nextLogistics) {
 		next := nextLogistics[j]
-		msg.WriteString(fmt.Sprintf("%s - %d\t\n", next.LocationName, next.Count))
+		msg.WriteString(fmt.Sprintf("%s: %d -> 0 (%+d)\n", next.LocationName, next.Count, -next.Count))
 		j++
 	}
 

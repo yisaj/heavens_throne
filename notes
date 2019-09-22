@@ -87,11 +87,16 @@ USER INTERFACE
         - !status
             Display the player's order, class, level, experience, available
             advances, and location.
-        - !logistics
+        - !logistics [location?]
             Display movement information for the player's order. Shows a list
             of locations that allies are moving to, with each location
             sublisted by the locations others are moving from, as well as their
             count.
+
+            Location  Current Pop.   Reinforcements   Units Leaving         Expected Pop.
+            -----------------------------------
+            Asteria  153  +23  -100(Yerk), -25(Bouchard's Island)       75u
+
         - !advance [class?]
             Advance your class given a high enough level if class is given.
             Otherwise display available advances.
