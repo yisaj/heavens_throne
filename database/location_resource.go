@@ -14,6 +14,8 @@ type LocationResource interface {
 	GetTempleLocation(ctx context.Context, order string) (int32, error)
 	GetCurrentLogistics(ctx context.Context, order string) ([]entities.Logistic, error)
 	GetNextLogistics(ctx context.Context, order string) ([]entities.Logistic, error)
+	GetArrivingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error)
+	GetLeavingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error)
 }
 
 func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entities.Location, error) {
@@ -51,7 +53,7 @@ func (c *connection) GetTempleLocation(ctx context.Context, order string) (int32
 
 func (c *connection) GetCurrentLogistics(ctx context.Context, order string) ([]entities.Logistic, error) {
 	query := `SELECT location.name, COUNT(*) FROM player
-    INNER JOIN location ON player.location=location.id WHERE player.martial_order=$1 GROUP BY location.name`
+    	INNER JOIN location ON player.location=location.id WHERE player.martial_order=$1 GROUP BY location.name`
 
 	var logistics []entities.Logistic
 	err := c.db.SelectContext(ctx, &logistics, query, order)
@@ -63,12 +65,42 @@ func (c *connection) GetCurrentLogistics(ctx context.Context, order string) ([]e
 
 func (c *connection) GetNextLogistics(ctx context.Context, order string) ([]entities.Logistic, error) {
 	query := `SELECT location.name, COUNT(*) FROM player
-    INNER JOIN location ON player.next_location=location.id WHERE player.martial_order=$1 GROUP BY location.name`
+    	INNER JOIN location ON player.next_location=location.id WHERE player.martial_order=$1 GROUP BY location.name`
 
 	var logistics []entities.Logistic
 	err := c.db.SelectContext(ctx, &logistics, query, order)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed getting next logistics")
+	}
+	return logistics, nil
+}
+
+func (c *connection) GetArrivingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error) {
+	query := `SELECT location.name, COUNT(*) FROM player
+		INNER JOIN location AS next_location ON player.next_location=next_location.id
+		INNER JOIN location AS prev_location ON player.location=prev_location.id
+		WHERE next_location.id=$1
+		GROUP BY prev_location.name`
+
+	var logistics []entities.Logistic
+	err := c.db.SelectContext(ctx, &logistics, query, locationID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting arriving logistics")
+	}
+	return logistics, nil
+}
+
+func (c *connection) GetLeavingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error) {
+	query := `SELECT location.name, COUNT(*) FROM player
+		INNER JOIN location AS next_location ON player.next_location=next_location.id
+		INNER JOIN location AS prev_location ON player.location=prev_location.id
+		WHERE prev_location.id=$1
+		GROUP BY next_location.name`
+
+	var logistics []entities.Logistic
+	err := c.db.SelectContext(ctx, &logistics, query, locationID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting arriving logistics")
 	}
 	return logistics, nil
 }

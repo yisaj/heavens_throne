@@ -50,7 +50,7 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 	case "!status":
 		return p.inputHandler.Status(ctx, player, recipientID)
 	case "!logistics":
-		return p.inputHandler.Logistics(ctx, player, recipientID)
+		return p.inputHandler.Logistics(ctx, player, recipientID, argument)
 	case "!join":
 		return p.inputHandler.Join(ctx, player, recipientID, argument)
 	case "!move":

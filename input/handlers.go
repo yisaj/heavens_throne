@@ -65,7 +65,7 @@ var (
 type InputHandler interface {
 	Help(ctx context.Context, player *entities.Player, recipientID string) error
 	Status(ctx context.Context, player *entities.Player, recipientID string) error
-	Logistics(ctx context.Context, player *entities.Player, recipientID string) error
+	Logistics(ctx context.Context, player *entities.Player, recipientID string, locationString string) error
 	Join(ctx context.Context, player *entities.Player, recipientID string, order string) error
 	Move(ctx context.Context, player *entities.Player, recipientID string, location string) error
 	Advance(ctx context.Context, player *entities.Player, recipientID string, class string) error
@@ -136,61 +136,116 @@ Next Location: %s
 	return nil
 }
 
-func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipientID string) error {
-	const logisticsHeader = `
+func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipientID string, locationString string) error {
+	const notFound = `
+That's not a place that I know of.
+`
+	const allHeader = `
 Here's all the logistics
 ----------------------------
 `
+	const arrivingHeader = `
+These are the arriving logistics
 
-	currentLogistics, err := h.resource.GetCurrentLogistics(ctx, player.MartialOrder)
-	if err != nil {
-		return errors.Wrap(err, "failed getting logistics")
-	}
-	nextLogistics, err := h.resource.GetNextLogistics(ctx, player.MartialOrder)
-	if err != nil {
-		return errors.Wrap(err, "failed getting logistics")
-	}
+`
+	const leavingHeader = `
+These are the leaving logistics
 
-	sort.Slice(currentLogistics, func(i int, j int) bool {
-		return currentLogistics[i].LocationName < currentLogistics[j].LocationName
-	})
-	sort.Slice(nextLogistics, func(i int, j int) bool {
-		return nextLogistics[i].LocationName < nextLogistics[j].LocationName
-	})
+`
 
-	var msg strings.Builder
-	msg.WriteString(logisticsHeader)
-	i, j := 0, 0
-	for i < len(currentLogistics) && j < len(nextLogistics) {
-		current, next := currentLogistics[i], nextLogistics[j]
-		if current.LocationName < next.LocationName {
-			msg.WriteString(fmt.Sprintf("%s:  0 -> %d (%+d)\n", current.LocationName, current.Count, current.Count))
+	if locationString == "" {
+		currentLogistics, err := h.resource.GetCurrentLogistics(ctx, player.MartialOrder)
+		if err != nil {
+			return errors.Wrap(err, "failed getting logistics")
+		}
+		nextLogistics, err := h.resource.GetNextLogistics(ctx, player.MartialOrder)
+		if err != nil {
+			return errors.Wrap(err, "failed getting logistics")
+		}
+
+		sort.Slice(currentLogistics, func(i int, j int) bool {
+			return currentLogistics[i].LocationName < currentLogistics[j].LocationName
+		})
+		sort.Slice(nextLogistics, func(i int, j int) bool {
+			return nextLogistics[i].LocationName < nextLogistics[j].LocationName
+		})
+
+		var msg strings.Builder
+		msg.WriteString(allHeader)
+		i, j := 0, 0
+		for i < len(currentLogistics) && j < len(nextLogistics) {
+			current, next := currentLogistics[i], nextLogistics[j]
+			if current.LocationName < next.LocationName {
+				msg.WriteString(fmt.Sprintf("%s:  0 -> %d (%+d)\n", current.LocationName, current.Count, current.Count))
+				i++
+			} else if current.LocationName > next.LocationName {
+				msg.WriteString(fmt.Sprintf("%s: %d -> 0 (%+d)\n", next.LocationName, next.Count, -next.Count))
+				j++
+			} else {
+				msg.WriteString(fmt.Sprintf("%s: %d -> %d (%+d)\n", current.LocationName, current.Count, next.Count, next.Count-current.Count))
+				i++
+				j++
+			}
+		}
+		for i < len(currentLogistics) {
+			current := currentLogistics[i]
+			msg.WriteString(fmt.Sprintf("%s: 0 -> %d (%+d)\n", current.LocationName, current.Count, current.Count))
 			i++
-		} else if current.LocationName > next.LocationName {
+		}
+		for j < len(nextLogistics) {
+			next := nextLogistics[j]
 			msg.WriteString(fmt.Sprintf("%s: %d -> 0 (%+d)\n", next.LocationName, next.Count, -next.Count))
 			j++
-		} else {
-			msg.WriteString(fmt.Sprintf("%s: %d -> %d (%+d)\n", current.LocationName, current.Count, next.Count, next.Count-current.Count))
-			i++
-			j++
 		}
-	}
-	for i < len(currentLogistics) {
-		current := currentLogistics[i]
-		msg.WriteString(fmt.Sprintf("%s: 0 -> %d (%+d)\n", current.LocationName, current.Count, current.Count))
-		i++
-	}
-	for j < len(nextLogistics) {
-		next := nextLogistics[j]
-		msg.WriteString(fmt.Sprintf("%s: %d -> 0 (%+d)\n", next.LocationName, next.Count, -next.Count))
-		j++
-	}
 
-	err = h.speaker.SendDM(recipientID, msg.String())
-	if err != nil {
-		return errors.Wrap(err, "failed getting logistics")
+		err = h.speaker.SendDM(recipientID, msg.String())
+		if err != nil {
+			return errors.Wrap(err, "failed getting logistics")
+		}
+		return nil
+	} else {
+		reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+		if err != nil {
+			return errors.Wrap(err, "failed building regexp")
+		}
+		locationString = reg.ReplaceAllString(locationString, "")
+
+		id, err := strconv.Atoi(locationString)
+		locationID := int32(id)
+		if err != nil {
+			id, ok := locationIDs[locationString]
+			if ok {
+				locationID = id
+			} else {
+				err = h.speaker.SendDM(recipientID, notFound)
+				if err != nil {
+					return errors.Wrap(err, "failed sending location not found message")
+				}
+				return nil
+			}
+		}
+
+		arrivingLogistics, err := h.resource.GetArrivingLogistics(ctx, locationID)
+		if err != nil {
+			return errors.Wrap(err, "failed getting location logistics")
+		}
+		leavingLogistics, err := h.resource.GetLeavingLogistics(ctx, locationID)
+		if err != nil {
+			return errors.Wrap(err, "failed getting location logistics")
+		}
+
+		var msg strings.Builder
+		msg.WriteString(arrivingHeader)
+		for _, logistic := range arrivingLogistics {
+			msg.WriteString(fmt.Sprintf("%s (+%d)\n", logistic.LocationName, logistic.Count))
+		}
+		msg.WriteString(leavingHeader)
+		for _, logistic := range leavingLogistics {
+			msg.WriteString(fmt.Sprintf("%s (-%d)\n", logistic.LocationName, logistic.Count))
+		}
+
+		return nil
 	}
-	return nil
 }
 
 func (h *handler) Join(ctx context.Context, player *entities.Player, recipientID string, order string) error {
