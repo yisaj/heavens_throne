@@ -244,6 +244,10 @@ These are the leaving logistics
 			msg.WriteString(fmt.Sprintf("%s (-%d)\n", logistic.LocationName, logistic.Count))
 		}
 
+		err = h.speaker.SendDM(recipientID, msg.String())
+		if err != nil {
+			return errors.Wrap(err, "failed getting location logistics")
+		}
 		return nil
 	}
 }
