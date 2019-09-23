@@ -76,7 +76,7 @@ func (c *connection) GetNextLogistics(ctx context.Context, order string) ([]enti
 }
 
 func (c *connection) GetArrivingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error) {
-	query := `SELECT location.name, COUNT(*) FROM player
+	query := `SELECT prev_location.name, COUNT(*) FROM player
 		INNER JOIN location AS next_location ON player.next_location=next_location.id
 		INNER JOIN location AS prev_location ON player.location=prev_location.id
 		WHERE next_location.id=$1
@@ -91,7 +91,7 @@ func (c *connection) GetArrivingLogistics(ctx context.Context, locationID int32)
 }
 
 func (c *connection) GetLeavingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error) {
-	query := `SELECT location.name, COUNT(*) FROM player
+	query := `SELECT next_location.name, COUNT(*) FROM player
 		INNER JOIN location AS next_location ON player.next_location=next_location.id
 		INNER JOIN location AS prev_location ON player.location=prev_location.id
 		WHERE prev_location.id=$1
