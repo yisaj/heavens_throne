@@ -99,7 +99,7 @@ func (c *connection) TogglePlayerUpdates(ctx context.Context, twitterID string) 
 }
 
 func (c *connection) AdvancePlayer(ctx context.Context, twitterID string, class string, rank int16) error {
-	query := `UPDATE player SET class=$1, rank=$2 WHERE twitter_id=$3 RETURNING *`
+	query := `UPDATE player SET class=$1, rank=$2, experience=experience - 100 WHERE twitter_id=$3 RETURNING *`
 
 	_, err := c.db.ExecContext(ctx, query, class, rank, twitterID)
 	if err != nil {
