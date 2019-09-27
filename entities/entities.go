@@ -23,7 +23,7 @@ type Player struct {
 
 func (p Player) FormatClass() string {
 	classTranslation := map[string]string{
-		"recruit":       "Recruit",
+		"recruit":       "Initiate",
 		"infantry":      "Infantry",
 		"spear":         "Spear",
 		"glaivemaster":  "Glaivemaster",

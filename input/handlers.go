@@ -60,6 +60,37 @@ var (
 		"landfall": 39, "fall": 39,
 		"bouchardsisland": 40, "bouchards": 40, "bouchard": 40, "island": 40,
 	}
+	maxClassRanks = map[string]int16{
+		"recruit":  1,
+		"infantry": 3, "cavalry": 3, "ranger": 3,
+		"spear": 5, "sword": 5, "heavycavalry": 5, "lightcavalry": 5, "archer": 5, "medic": 5,
+		"glaivemaster": 1, "legionary": 1, "monsterknight": 1, "horsearcher": 1, "mage": 1, "healer": 1,
+	}
+	classAdvances = map[string][]string{
+		"recruit":  {"infantry", "cavalry", "ranger"},
+		"infantry": {"spear", "sword"}, "cavalry": {"heavycavalry", "lightcavalry"}, "ranger": {"archer", "medic"},
+		"spear": {"glaivemaster"}, "sword": {"legionary"},
+		"heavycavalry": {"monsterknight"}, "lightcavalry": {"horsearcher"},
+		"archer": {"mage"}, "medic": {"healer"},
+		"glaivemaster": {}, "legionary": {}, "monsterknight": {}, "horsearcher": {}, "mage": {}, "healer": {},
+	}
+	classDescriptions = map[string]string{
+		"infantry":      "INFANTRY: ",
+		"cavalry":       "CAVALRY: ",
+		"ranger":        "RANGER: ",
+		"spear":         "SPEAR: ",
+		"sword":         "SWORD ",
+		"heavycavalry":  "HEAVY CAVALRY: ",
+		"lightcavalry":  "LIGHT CAVALRY ",
+		"archer":        "ARCHER: ",
+		"medic":         "MEDIC: ",
+		"glaivemaster":  "GLAIVEMASTER: ",
+		"legionary":     "LEGIONARY: ",
+		"monsterknight": "MONSTER KNIGHT: ",
+		"horsearcher":   "HORSE ARCHER: ",
+		"mage":          "MAGE: ",
+		"healer":        "HEALER: ",
+	}
 )
 
 type InputHandler interface {
@@ -386,7 +417,110 @@ You are now moving to %s.
 }
 
 func (h *handler) Advance(ctx context.Context, player *entities.Player, recipientID string, class string) error {
-	return nil
+	const notExperienced = `
+You don't have enough experience.
+`
+	const maxClass = `
+You've already reached the peak.
+`
+	const advanceInfoHeader = `
+Here are your advances:
+`
+	const rankAdvance = `
+You advanced: %s -> %s.
+`
+	const classAdvance = `
+You advanced: %s -> %s.
+`
+	const unknownClass = `
+That's not a class I'm aware of.
+`
+
+	advances := classAdvances[player.Class]
+	if len(advances) == 0 {
+		err := h.speaker.SendDM(recipientID, maxClass)
+		if err != nil {
+			return errors.Wrap(err, "failed getting advance info")
+		}
+		return nil
+	}
+
+	if class == "" {
+		// not enough experience
+		if player.Experience < 100 {
+			err := h.speaker.SendDM(recipientID, notExperienced)
+			if err != nil {
+				return errors.Wrap(err, "failed getting advance info")
+			}
+			return nil
+		}
+
+		if player.Rank < maxClassRanks[player.Class] {
+			// advance a rank
+			oldRank := player.FormatClass()
+			player.Rank++
+
+			err := h.resource.AdvancePlayer(ctx, recipientID, player.Class, player.Rank)
+			if err != nil {
+				return errors.Wrap(err, "failed advancing player rank")
+			}
+
+			newRank := player.FormatClass()
+
+			err = h.speaker.SendDM(recipientID, fmt.Sprintf(rankAdvance, oldRank, newRank))
+			if err != nil {
+				return errors.Wrap(err, "failed advancing player rank")
+			}
+			return nil
+		} else {
+			// need to advance a class, which the user didn't provide
+			var msg strings.Builder
+			msg.WriteString(advanceInfoHeader)
+			for _, advance := range advances {
+				msg.WriteString(classDescriptions[advance])
+			}
+
+			err := h.speaker.SendDM(recipientID, msg.String())
+			if err != nil {
+				return errors.Wrap(err, "failed getting advance info")
+			}
+			return nil
+		}
+	} else {
+		reg, err := regexp.Compile("[^a-zA-Z]+")
+		if err != nil {
+			return errors.Wrap(err, "failed building regexp")
+		}
+		classString := reg.ReplaceAllString(class, "")
+
+		for _, advance := range advances {
+			if advance == classString {
+				oldClass := player.FormatClass()
+				player.Class = advance
+				player.Rank = 1
+
+				err = h.resource.AdvancePlayer(ctx, recipientID, player.Class, player.Rank)
+				if err != nil {
+					return errors.Wrap(err, "failed advancing player class")
+				}
+
+				newClass := player.FormatClass()
+
+				err := h.speaker.SendDM(recipientID, fmt.Sprintf(classAdvance, oldClass, newClass))
+				if err != nil {
+					return errors.Wrap(err, "failed advancing player class")
+				}
+				return nil
+			}
+		}
+
+		// unknown advance name
+		err = h.speaker.SendDM(recipientID, unknownClass)
+		if err != nil {
+			return errors.Wrap(err, "failed advancing player class")
+		}
+		return nil
+	}
 }
 
 // TODO: remember to deactivate instead of deleting

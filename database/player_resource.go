@@ -17,6 +17,7 @@ type PlayerResource interface {
 	DeletePlayer(ctx context.Context, twitterID string) error
 	MovePlayer(ctx context.Context, twitterID string, destination int32) error
 	TogglePlayerUpdates(ctx context.Context, twitterID string) (bool, error)
+	AdvancePlayer(ctx context.Context, twitterID string, class string, rank int16) error
 }
 
 func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error) {
@@ -95,4 +96,14 @@ func (c *connection) TogglePlayerUpdates(ctx context.Context, twitterID string) 
 		return false, errors.Wrap(err, "failed toggling player updates setting")
 	}
 	return receiveUpdates, nil
+}
+
+func (c *connection) AdvancePlayer(ctx context.Context, twitterID string, class string, rank int16) error {
+	query := `UPDATE player SET class=$1, rank=$2 WHERE twitter_id=$3 RETURNING *`
+
+	_, err := c.db.ExecContext(ctx, query, class, rank, twitterID)
+	if err != nil {
+		return errors.Wrap(err, "failed advancing player class and rank")
+	}
+	return nil
 }
