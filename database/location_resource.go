@@ -9,7 +9,7 @@ import (
 )
 
 type LocationResource interface {
-	GetLocation(ctx context.Context, locationID int32) (entities.Location, error)
+	GetLocation(ctx context.Context, locationID int32) (*entities.Location, error)
 	GetAdjacentLocations(ctx context.Context, locationID int32) ([]int32, error)
 	GetTempleLocation(ctx context.Context, order string) (int32, error)
 	GetCurrentLogistics(ctx context.Context, order string) ([]entities.Logistic, error)
@@ -19,7 +19,7 @@ type LocationResource interface {
 	SetLocationOwner(ctx context.Context, locationID int32, owner string) error
 }
 
-func (c *connection) GetLocation(ctx context.Context, locationID int32) (entities.Location, error) {
+func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entities.Location, error) {
 	query := `SELECT * FROM location WHERE id=$1`
 
 	var location entities.Location
@@ -27,7 +27,7 @@ func (c *connection) GetLocation(ctx context.Context, locationID int32) (entitie
 	if err != nil {
 		return nil, errors.Wrap(err, "failed getting location")
 	}
-	return location, nil
+	return &location, nil
 }
 
 func (c *connection) GetAdjacentLocations(ctx context.Context, locationID int32) ([]int32, error) {

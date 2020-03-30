@@ -179,7 +179,7 @@ func (ns *NormalSimulator) Simulate() error {
 			return errors.Wrap(err, "failed simulation")
 		}
 
-		deltaLocation := location
+		deltaLocation := *location
 		if !location.Occupier.Valid || (location.Occupier.String == occupier) {
 			// location ownership should change
 			deltaLocation.Owner.String = occupier
@@ -193,7 +193,7 @@ func (ns *NormalSimulator) Simulate() error {
 		battleEvent := BattleEvent{
 			survivors:      survivors,
 			fatalities:     fatalities,
-			locationBefore: location,
+			locationBefore: *location,
 			locationAfter:  deltaLocation,
 		}
 		// send out storyteller individual tweets and save battle tweets
