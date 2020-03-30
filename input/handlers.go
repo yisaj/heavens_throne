@@ -93,7 +93,7 @@ var (
 	}
 )
 
-type InputHandler interface {
+type Handler interface {
 	Help(ctx context.Context, player *entities.Player, recipientID string) error
 	Status(ctx context.Context, player *entities.Player, recipientID string) error
 	Logistics(ctx context.Context, player *entities.Player, recipientID string, locationString string) error
@@ -111,7 +111,7 @@ type handler struct {
 	speaker  twitspeak.TwitterSpeaker
 }
 
-func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeaker) InputHandler {
+func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeaker) Handler {
 	return &handler{
 		resource,
 		speaker,

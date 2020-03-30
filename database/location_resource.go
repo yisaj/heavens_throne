@@ -9,16 +9,17 @@ import (
 )
 
 type LocationResource interface {
-	GetLocation(ctx context.Context, locationID int32) (*entities.Location, error)
+	GetLocation(ctx context.Context, locationID int32) (entities.Location, error)
 	GetAdjacentLocations(ctx context.Context, locationID int32) ([]int32, error)
 	GetTempleLocation(ctx context.Context, order string) (int32, error)
 	GetCurrentLogistics(ctx context.Context, order string) ([]entities.Logistic, error)
 	GetNextLogistics(ctx context.Context, order string) ([]entities.Logistic, error)
 	GetArrivingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error)
 	GetLeavingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error)
+	SetLocationOwner(ctx context.Context, locationID int32, owner string) error
 }
 
-func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entities.Location, error) {
+func (c *connection) GetLocation(ctx context.Context, locationID int32) (entities.Location, error) {
 	query := `SELECT * FROM location WHERE id=$1`
 
 	var location entities.Location
@@ -26,7 +27,7 @@ func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entiti
 	if err != nil {
 		return nil, errors.Wrap(err, "failed getting location")
 	}
-	return &location, nil
+	return location, nil
 }
 
 func (c *connection) GetAdjacentLocations(ctx context.Context, locationID int32) ([]int32, error) {
@@ -103,4 +104,14 @@ func (c *connection) GetLeavingLogistics(ctx context.Context, locationID int32) 
 		return nil, errors.Wrap(err, "failed getting arriving logistics")
 	}
 	return logistics, nil
+}
+
+func (c *connection) SetLocationOwner(ctx context.Context, locationID int32, owner string) error {
+	query := `UPDATE location SET owner=$1 WHERE id=$2`
+
+	_, err := c.db.ExecContext(ctx, query, owner, locationID)
+	if err != nil {
+		return errors.Wrap(err, "failed setting location owner")
+	}
+	return nil
 }

@@ -3,8 +3,6 @@ package entities
 import (
 	"database/sql"
 	"fmt"
-
-	"github.com/hashicorp/go-multierror"
 )
 
 type Player struct {
@@ -21,7 +19,8 @@ type Player struct {
 	Rank           int16
 }
 
-func (p Player) FormatClass() string {
+// TODO: rename horsearcher to courser
+func (p *Player) FormatClass() string {
 	classTranslation := map[string]string{
 		"recruit":       "Initiate",
 		"infantry":      "Infantry",
@@ -52,47 +51,44 @@ func (p Player) FormatClass() string {
 	return fmt.Sprintf("%s %s", classTranslation[p.Class], rankTranslation[p.Rank])
 }
 
-type Location struct {
-	ID    int32
-	Name  string
-	Owner sql.NullString
+type Stats struct {
+	Potency int
+	Defense int
+	Speed   int
+	Aggro   int
 }
 
-type TwitterResponse struct {
-	Errors []TwitterError
-	ID     string
-}
-
-func (tr TwitterResponse) GetErrors() error {
-	if len(tr.Errors) > 0 {
-		var err error = tr.Errors[0]
-		for _, twitterErr := range tr.Errors[1:] {
-			err = multierror.Append(err, twitterErr)
-		}
-		return err
+// TODO: consider the stats impact of rank
+var (
+	classBaseStats = map[string]Stats{
+		"recruit":       Stats{10, 10, 10, 10},
+		"infantry":      Stats{60, 60, 40, 60},
+		"cavalry":       Stats{40, 40, 60, 50},
+		"ranger":        Stats{50, 50, 50, 40},
+		"spear":         Stats{70, 70, 50, 70},
+		"sword":         Stats{70, 70, 50, 70},
+		"heavycavalry":  Stats{50, 50, 70, 60},
+		"lightcavalry":  Stats{50, 50, 70, 60},
+		"archer":        Stats{60, 60, 60, 50},
+		"medic":         Stats{60, 60, 60, 50},
+		"legionary":     Stats{80, 80, 60, 80},
+		"glaivemaster":  Stats{80, 80, 60, 80},
+		"monsterknight": Stats{60, 60, 80, 70},
+		"horsearcher":   Stats{60, 60, 80, 70},
+		"mage":          Stats{70, 70, 70, 60},
+		"healer":        Stats{70, 70, 70, 60},
 	}
-	return nil
+)
+
+func (p *Player) GetStats() Stats {
+	return classBaseStats[p.Class]
 }
 
-type TwitterError struct {
-	Message string
-	Code    int32
-}
-
-func (te TwitterError) Error() string {
-	return fmt.Sprintf("Twitter Err %d: %s", te.Code, te.Message)
-}
-
-type Event struct {
-	ForUserID           string `json:"for_user_id"`
-	DirectMessageEvents []struct {
-		MessageCreate struct {
-			SenderID    string `json:"sender_id"`
-			MessageData struct {
-				Text string
-			} `json:"message_data"`
-		} `json:"message_create"`
-	} `json:"direct_message_events"`
+type Location struct {
+	ID       int32
+	Name     string
+	Owner    sql.NullString
+	Occupier sql.NullString
 }
 
 type Logistic struct {

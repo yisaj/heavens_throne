@@ -14,12 +14,12 @@ type DMParser interface {
 }
 
 type parser struct {
-	inputHandler InputHandler
+	inputHandler Handler
 	resource     database.Resource
 	logger       *logrus.Logger
 }
 
-func NewDMParser(inputHandler InputHandler, resource database.Resource, logger *logrus.Logger) DMParser {
+func NewDMParser(inputHandler Handler, resource database.Resource, logger *logrus.Logger) DMParser {
 	return &parser{
 		inputHandler,
 		resource,

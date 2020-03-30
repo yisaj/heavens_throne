@@ -23,6 +23,7 @@ type Resource interface {
 	LocationResource
 	PlayerResource
 	WebhooksResource
+	GameResource
 }
 
 type connection struct {

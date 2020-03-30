@@ -22,7 +22,7 @@ THEMING
         - Order Gorgona Purple #7851A9 Asteria
         - The Baaturate Green #065526 x No Name
     Location Names:
-        - Bouchard's Island
+        - x Bouchard's Island
         - x Throne
         - x Poppy Fields
         - x Duncan Talley
@@ -120,7 +120,7 @@ USER INTERFACE
 
 ARCHITECTURE
     ===Interface Layer===
-    Webhooks listener
+    x Webhooks listener
         - basic http server, since only one path needs to be exposed
             - autocert for ssl
             - whitelist twitter ips (low prio)
@@ -128,7 +128,7 @@ ARCHITECTURE
             - handles POSTs and filter for direct messages
             - Mutually exclude the game simulator
 
-    Messenger
+    x Messenger
         - Posting tweets
             - Post tweet helper
             - Post reply helper
@@ -137,12 +137,12 @@ ARCHITECTURE
             - Send direct message helper
 
     ===Application Layer===
-    Input Parser
+    x Input Parser
         - Parse the direct message text and call the corresponding input
           handler method.
         - Filtering for particular accounts, times, etc. (abiliy to ban)
 
-    Input Handling
+    x Input Handling
         - Perform the database operations and response for each command
         - Getters
             - !help
@@ -172,7 +172,7 @@ ARCHITECTURE
             - Read player info from database and generate summaries.
 
     ===Data Layer===
-    Database
+    x Database
         - Postgres database
         - Tables
             - User
@@ -218,6 +218,7 @@ GAME DESIGN
             - Participating in battles
             - Winning battles
             - Surviving battles
+            - Just existing
 
     Classes
         - Recruit
@@ -228,6 +229,22 @@ GAME DESIGN
         - Spellcaster
         - Archer
         -
+
+    Things that can happen to a player:
+        - Survive
+        - Routed (cavalry affected?)
+        - Killed
+
+Two issues: engagement and combat
+How do units choose who to attack and when?
+How do units take damage?
+
+Three important attributes of units: Damage, Durability, Speed
+
+Stages of combat:
+cavalry attacks
+archers attack
+infantry attacks
 
 
 
@@ -243,16 +260,17 @@ initiative/speed
 attack
 defense
 range
+aggro
 
-infantry
-    -> spear -> glaivemaster (also additionally effective against infantry)
-    -> sword -> bulwark (super tank)
-cavalry
-    -> heavy -> monster rider (can only be hit by archers)
-    -> light -> horse archer (can hit backline more easily)
-ranger
-    -> archer -> spellcaster (can hit multiple)
-    -> medic -> druidic healer (can heal multiple)
+infantry (low speed)
+    -> spear (bonus against cavalry) # -> glaivemaster (counter attacks) #
+    -> sword (tanking) # -> bulwark (super tank, plus aggro) #
+cavalry (high speed)
+    -> heavy (greater attack) # -> monster rider (can only be hit by archers) #
+    -> light (higher speed) # -> horse archer (ignores aggro) #
+ranger (medium speed)
+    -> archer (dps) # -> spellcaster (can hit multiple)
+    -> medic (increases allies defense) # -> druidic healer (can revive units) #
 
 randomly select a unit
 that unit attacks another random enemy unit
@@ -260,7 +278,17 @@ that unit attacks another random enemy unit
 cavalry and heavy cavalry are much more likely to hit cavalry and frontline
 light cavalry are equally likely to hit
 
-frontline are much more likely to hit cavalry and frontline
+//frontline are much more likely to hit cavalry and frontline
 
-archers are equally likely to hit everyone
-healers are more likely to hit frontline and backline
+//archers are equally likely to hit everyone
+//healers are more likely to hit frontline and backline
+
+
+
+lock
+change value
+unlock
+
+wait second lock
+
+

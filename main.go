@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/yisaj/heavens_throne/config"
 	"github.com/yisaj/heavens_throne/database"
+	"github.com/yisaj/heavens_throne/simulation"
 	"github.com/yisaj/heavens_throne/twitlisten"
 	"github.com/yisaj/heavens_throne/twitspeak"
 
@@ -28,7 +29,8 @@ func main() {
 	// spin up game simulation task
 
 	// spin up twitter webhooks server
-	twitlisten.Listen(conf, speaker, resource, logger)
+	simLock := simulation.SimLock{}
+	twitlisten.Listen(conf, speaker, resource, logger, &simLock)
 
 	// stop game simulation task on exit
 

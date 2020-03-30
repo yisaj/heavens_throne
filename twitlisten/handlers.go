@@ -10,8 +10,9 @@ import (
 	"strings"
 
 	"github.com/yisaj/heavens_throne/config"
-	"github.com/yisaj/heavens_throne/entities"
 	"github.com/yisaj/heavens_throne/input"
+	"github.com/yisaj/heavens_throne/simulation"
+	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/sirupsen/logrus"
 )
@@ -21,14 +22,18 @@ type handler struct {
 	logger     *logrus.Logger
 	WebhooksID string
 	dmParser   input.DMParser
+	speaker twitspeak.TwitterSpeaker
+	simlock *simulation.SimLock
 }
 
-func NewHandler(conf *config.Config, logger *logrus.Logger, dmParser input.DMParser) http.Handler {
+func NewHandler(conf *config.Config, logger *logrus.Logger, dmParser input.DMParser, speaker twitspeak.TwitterSpeaker, simlock *simulation.SimLock) http.Handler {
 	h := &handler{
 		http.NewServeMux(),
 		logger,
 		"",
 		dmParser,
+		speaker,
+		simlock,
 	}
 
 	h.mux.HandleFunc(conf.Endpoint, func(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +48,18 @@ func NewHandler(conf *config.Config, logger *logrus.Logger, dmParser input.DMPar
 	})
 
 	return h
+}
+
+type Event struct {
+	ForUserID           string `json:"for_user_id"`
+	DirectMessageEvents []struct {
+		MessageCreate struct {
+			SenderID    string `json:"sender_id"`
+			MessageData struct {
+				Text string
+			} `json:"message_data"`
+		} `json:"message_create"`
+	} `json:"direct_message_events"`
 }
 
 func (h *handler) handleCRC(w http.ResponseWriter, r *http.Request, secret string) {
@@ -71,7 +88,11 @@ func (h *handler) handleCRC(w http.ResponseWriter, r *http.Request, secret strin
 }
 
 func (h *handler) handleEvent(w http.ResponseWriter, r *http.Request) {
-	var event entities.Event
+	const busySimulating = `
+I'm busy simulating right now.'
+`
+
+	var event Event
 	err := json.NewDecoder(r.Body).Decode(&event)
 	if err == nil {
 		for _, messageEvent := range event.DirectMessageEvents {
@@ -79,6 +100,14 @@ func (h *handler) handleEvent(w http.ResponseWriter, r *http.Request) {
 			if recipientID == event.ForUserID {
 				continue
 			}
+
+			simulating := h.simlock.Check()
+			if simulating {
+				err = h.speaker.SendDM(recipientID, busySimulating)
+				h.simlock.RUnlock()
+				continue
+			}
+
 			msg := strings.ToLower(messageEvent.MessageCreate.MessageData.Text)
 			err = h.dmParser.ParseDM(r.Context(), recipientID, msg)
 			if err != nil {

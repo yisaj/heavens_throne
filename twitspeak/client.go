@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"io"
 	"math/rand"
 	"net/http"
@@ -16,10 +17,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/yisaj/heavens_throne/config"
-	"github.com/yisaj/heavens_throne/entities"
-
 	"github.com/pkg/errors"
+	"github.com/yisaj/heavens_throne/config"
 )
 
 const (
@@ -45,6 +44,33 @@ type TwitterSpeaker interface {
 	SendDM(userID string, msg string) error
 	SubscribeUser() error
 }
+
+type TwitterResponse struct {
+	Errors []TwitterError
+	ID     string
+}
+
+func (tr TwitterResponse) GetErrors() error {
+	if len(tr.Errors) > 0 {
+		var err error = tr.Errors[0]
+		for _, twitterErr := range tr.Errors[1:] {
+			err = multierror.Append(err, twitterErr)
+		}
+		return err
+	}
+	return nil
+}
+
+type TwitterError struct {
+	Message string
+	Code    int32
+}
+
+func (te TwitterError) Error() string {
+	return fmt.Sprintf("Twitter Err %d: %s", te.Code, te.Message)
+}
+
+
 
 func NewSpeaker(conf *config.Config) TwitterSpeaker {
 	client := &http.Client{
@@ -164,7 +190,7 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 		return errors.Wrap(err, "failed requesting trigger CRC")
 	}
 
-	var twitterRes entities.TwitterResponse
+	var twitterRes TwitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
@@ -230,7 +256,7 @@ func (s *speaker) RegisterWebhook() (string, error) {
 		return "", errors.Wrap(err, "failed requesting webhooks registration")
 	}
 
-	var twitterRes entities.TwitterResponse
+	var twitterRes TwitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil {
 		return "", errors.Wrap(err, "failed decoding register webhook response")
@@ -270,7 +296,7 @@ func (s *speaker) SendDM(userID string, msg string) error {
 		return errors.Wrap(err, "failed posting direct message")
 	}
 
-	var twitterRes entities.TwitterResponse
+	var twitterRes TwitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil {
 		return errors.Wrap(err, "failed decoding post direct message response")
@@ -300,7 +326,7 @@ func (s *speaker) SubscribeUser() error {
 		return errors.Wrap(err, "failed requesting user subscription")
 	}
 
-	var twitterRes entities.TwitterResponse
+	var twitterRes TwitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding trigger CRC response")

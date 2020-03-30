@@ -3,12 +3,13 @@ package twitlisten
 import (
 	"context"
 	"crypto/tls"
-	"github.com/yisaj/heavens_throne/input"
 	"net/http"
 	"time"
 
 	"github.com/yisaj/heavens_throne/config"
 	"github.com/yisaj/heavens_throne/database"
+	"github.com/yisaj/heavens_throne/input"
+	"github.com/yisaj/heavens_throne/simulation"
 	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/sirupsen/logrus"
@@ -16,7 +17,7 @@ import (
 )
 
 // TODO: pass a message parser to the twitter listener
-func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource database.Resource, logger *logrus.Logger) {
+func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource database.Resource, logger *logrus.Logger, simLock *simulation.SimLock) {
 	// check for webhooks id in database
 	webhooksID, err := resource.GetWebhooksID(context.TODO())
 	if err != nil {
@@ -54,7 +55,7 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	// build the twitter webhooks server
 	inputHandler := input.NewInputHandler(resource, speaker)
 	dmParser := input.NewDMParser(inputHandler, resource, logger)
-	twitterHandler := NewHandler(conf, logger, dmParser)
+	twitterHandler := NewHandler(conf, logger, dmParser, speaker, simLock)
 	server := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,

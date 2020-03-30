@@ -10,7 +10,8 @@ CREATE TABLE location
 (
     id    integer PRIMARY KEY,
     name  text NOT NULL UNIQUE,
-    owner martialorder
+    owner martialorder,
+    occupier martialorder
 );
 
 CREATE TABLE player

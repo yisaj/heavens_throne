@@ -18,6 +18,8 @@ type PlayerResource interface {
 	MovePlayer(ctx context.Context, twitterID string, destination int32) error
 	TogglePlayerUpdates(ctx context.Context, twitterID string) (bool, error)
 	AdvancePlayer(ctx context.Context, twitterID string, class string, rank int16) error
+	GetAllPlayers(ctx context.Context) ([]entities.Player, error)
+	KillPlayer(ctx context.Context, twitterID string) error
 }
 
 func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error) {
@@ -104,6 +106,29 @@ func (c *connection) AdvancePlayer(ctx context.Context, twitterID string, class 
 	_, err := c.db.ExecContext(ctx, query, class, rank, twitterID)
 	if err != nil {
 		return errors.Wrap(err, "failed advancing player class and rank")
+	}
+	return nil
+}
+
+func (c *connection) GetAllPlayers(ctx context.Context) ([]entities.Player, error) {
+	query := `SELECT * FROM player`
+
+	var players []entities.Player
+	err := c.db.SelectContext(ctx, &players, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting all players")
+	}
+	return players, nil
+}
+
+func (c *connection) KillPlayer(ctx context.Context, twitterID string) error {
+	query := `UPDATE player SET location=
+    	(SELECT location FROM temple WHERE location.martial_order=player.martial_order)
+		WHERE twitter_id=$1`
+
+	_, err := c.db.ExecContext(ctx, query, twitterID)
+	if err != nil {
+		return errors.Wrap(err, "failed killing player")
 	}
 	return nil
 }
