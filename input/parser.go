@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/yisaj/heavens_throne/database"
+	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/sirupsen/logrus"
 )
@@ -20,15 +20,13 @@ type DMParser interface {
 // call the appropriate handler
 type parser struct {
 	inputHandler Handler
-	resource     database.Resource
 	logger       *logrus.Logger
 }
 
 // NewDMParser constructs a new parser to parse player input
-func NewDMParser(inputHandler Handler, resource database.Resource, logger *logrus.Logger) DMParser {
+func NewDMParser(resource database.Resource, speaker twitspeak.TwitterSpeaker, logger *logrus.Logger) DMParser {
 	return &parser{
-		inputHandler,
-		resource,
+		newInputHandler(resource, speaker),
 		logger,
 	}
 }
@@ -44,31 +42,26 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 	tokenizedCommand := strings.SplitN(bangString, " ", 2)
 	command, argument := tokenizedCommand[0], tokenizedCommand[1]
 
-	player, err := p.resource.GetPlayer(ctx, recipientID)
-	if err != nil {
-		return errors.Wrap(err, "failed parsing DM")
-	}
-
-	p.logger.Infof("got command: `%s`, argument: `%s` from ", command, argument)
+	p.logger.Infof("got command: `%s`, argument: `%s` from `%s`", command, argument, recipientID)
 
 	switch command {
 	case "!help":
-		return p.inputHandler.Help(ctx, player, recipientID)
+		return p.inputHandler.Help(ctx, recipientID)
 	case "!status":
-		return p.inputHandler.Status(ctx, player, recipientID)
+		return p.inputHandler.Status(ctx, recipientID)
 	case "!logistics":
-		return p.inputHandler.Logistics(ctx, player, recipientID, argument)
+		return p.inputHandler.Logistics(ctx, recipientID, argument)
 	case "!join":
-		return p.inputHandler.Join(ctx, player, recipientID, argument)
+		return p.inputHandler.Join(ctx, recipientID, argument)
 	case "!move":
-		return p.inputHandler.Move(ctx, player, recipientID, argument)
+		return p.inputHandler.Move(ctx, recipientID, argument)
 	case "!advance":
-		return p.inputHandler.Advance(ctx, player, recipientID, argument)
+		return p.inputHandler.Advance(ctx, recipientID, argument)
 	case "!quit":
-		return p.inputHandler.Quit(ctx, player, recipientID)
+		return p.inputHandler.Quit(ctx, recipientID)
 	case "!toggleupdates":
-		return p.inputHandler.ToggleUpdates(ctx, player, recipientID)
+		return p.inputHandler.ToggleUpdates(ctx, recipientID)
 	default:
-		return p.inputHandler.InvalidCommand(ctx, player, recipientID)
+		return p.inputHandler.InvalidCommand(ctx, recipientID)
 	}
 }

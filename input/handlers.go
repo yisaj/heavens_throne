@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/yisaj/heavens_throne/database"
-	"github.com/yisaj/heavens_throne/entities"
 	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/pkg/errors"
@@ -95,16 +94,16 @@ var (
 
 // Handler contains methods to handle each of the possible player inputs
 type Handler interface {
-	Help(ctx context.Context, player *entities.Player, recipientID string) error
-	Status(ctx context.Context, player *entities.Player, recipientID string) error
-	Logistics(ctx context.Context, player *entities.Player, recipientID string, locationString string) error
-	Join(ctx context.Context, player *entities.Player, recipientID string, order string) error
-	Move(ctx context.Context, player *entities.Player, recipientID string, location string) error
-	Advance(ctx context.Context, player *entities.Player, recipientID string, class string) error
-	Quit(ctx context.Context, player *entities.Player, recipientID string) error
-	ToggleUpdates(ctx context.Context, player *entities.Player, recipientID string) error
-	InvalidCommand(ctx context.Context, player *entities.Player, recipientID string) error
-	Echo(ctx context.Context, player *entities.Player, recipientID string, msg string) error
+	Help(ctx context.Context, recipientID string) error
+	Status(ctx context.Context, recipientID string) error
+	Logistics(ctx context.Context, recipientID string, locationString string) error
+	Join(ctx context.Context, recipientID string, order string) error
+	Move(ctx context.Context, recipientID string, location string) error
+	Advance(ctx context.Context, recipientID string, class string) error
+	Quit(ctx context.Context, recipientID string) error
+	ToggleUpdates(ctx context.Context, recipientID string) error
+	InvalidCommand(ctx context.Context, recipientID string) error
+	Echo(ctx context.Context, recipientID string, msg string) error
 }
 
 // A player input handler has to be able to access database resources and respond
@@ -114,8 +113,8 @@ type handler struct {
 	speaker  twitspeak.TwitterSpeaker
 }
 
-// NewInputHandler constructs a handler to handle player input
-func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeaker) Handler {
+// newInputHandler constructs a handler to handle player input
+func newInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeaker) Handler {
 	return &handler{
 		resource,
 		speaker,
@@ -123,7 +122,7 @@ func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeake
 }
 
 // Help sends the player a list of commands and info about the game
-func (h *handler) Help(ctx context.Context, player *entities.Player, recipientID string) error {
+func (h *handler) Help(ctx context.Context, recipientID string) error {
 	const newPlayerHelp = `
 	Type !join [order] to join.
 `
@@ -131,7 +130,11 @@ func (h *handler) Help(ctx context.Context, player *entities.Player, recipientID
 	!status to see your status.
 `
 
-	var err error
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+
 	if player == nil {
 		err = h.speaker.SendDM(recipientID, newPlayerHelp)
 	} else {
@@ -144,7 +147,7 @@ func (h *handler) Help(ctx context.Context, player *entities.Player, recipientID
 	return nil
 }
 
-func (h *handler) Status(ctx context.Context, player *entities.Player, recipientID string) error {
+func (h *handler) Status(ctx context.Context, recipientID string) error {
 	// TODO: write a real status message
 	// TODO: handle available advances text
 	const statusFormat = `
@@ -155,26 +158,32 @@ Location: %s
 Next Location: %s
 `
 
-	if player != nil {
-		location, err := h.resource.GetLocation(ctx, player.Location)
-		if err != nil || location == nil {
-			return errors.Wrap(err, "failed sending player status")
-		}
-		nextLocation, err := h.resource.GetLocation(ctx, player.NextLocation)
-		if err != nil || nextLocation == nil {
-			return errors.Wrap(err, "failed sending player status")
-		}
-
-		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name, nextLocation.Name)
-		err = h.speaker.SendDM(recipientID, msg)
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
 	}
+	if player == nil {
+		return nil
+	}
+
+	location, err := h.resource.GetLocation(ctx, player.Location)
+	if err != nil || location == nil {
+		return errors.Wrap(err, "failed sending player status")
+	}
+	nextLocation, err := h.resource.GetLocation(ctx, player.NextLocation)
+	if err != nil || nextLocation == nil {
+		return errors.Wrap(err, "failed sending player status")
+	}
+
+	msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name, nextLocation.Name)
+	err = h.speaker.SendDM(recipientID, msg)
 
 	return nil
 }
 
 // Logistics sends the player information about where allied units are and where
 // they're going
-func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipientID string, locationString string) error {
+func (h *handler) Logistics(ctx context.Context, recipientID string, locationString string) error {
 	const notFound = `
 That's not a place that I know of.
 `
@@ -190,6 +199,14 @@ These are the arriving logistics
 These are the leaving logistics
 
 `
+
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+	if player == nil {
+		return nil
+	}
 
 	if locationString == "" {
 		currentLogistics, err := h.resource.GetCurrentLogistics(ctx, player.MartialOrder)
@@ -286,11 +303,12 @@ These are the leaving logistics
 			return errors.Wrap(err, "failed getting location logistics")
 		}
 	}
+
 	return nil
 }
 
 // Join adds a new player to the game under the chosen order
-func (h *handler) Join(ctx context.Context, player *entities.Player, recipientID string, order string) error {
+func (h *handler) Join(ctx context.Context, recipientID string, order string) error {
 	// TODO: write a real join message
 	const joinFormat = `
 ORDER: %s
@@ -306,7 +324,12 @@ You're already playing.
 	const deactivatedPlayer = `
 The Gate is closed to you. At least for this cycle.
 `
-	var err error
+
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+
 	if player != nil {
 		if player.Active {
 			err = h.speaker.SendDM(recipientID, alreadyPlaying)
@@ -351,11 +374,12 @@ The Gate is closed to you. At least for this cycle.
 	if err != nil {
 		return errors.Wrap(err, "failed to send join message")
 	}
+
 	return nil
 }
 
 // Move tries to set the player's next location to the given location
-func (h *handler) Move(ctx context.Context, player *entities.Player, recipientID string, locationString string) error {
+func (h *handler) Move(ctx context.Context, recipientID string, locationString string) error {
 	const notFound = `
 That's not a place that I know of.
 `
@@ -365,6 +389,13 @@ That's not an adjacent location.'
 	const moving = `
 You are now moving to %s.
 `
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+	if player == nil {
+		return nil
+	}
 
 	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
 	if err != nil {
@@ -421,11 +452,12 @@ You are now moving to %s.
 	if err != nil {
 		return errors.Wrap(err, "failed sending moved player message")
 	}
+
 	return nil
 }
 
 // Advance attempts to level a player up to another rank or class
-func (h *handler) Advance(ctx context.Context, player *entities.Player, recipientID string, class string) error {
+func (h *handler) Advance(ctx context.Context, recipientID string, class string) error {
 	const notExperienced = `
 You don't have enough experience.
 `
@@ -444,6 +476,14 @@ You advanced: %s -> %s.
 	const unknownClass = `
 That's not a class I'm aware of.
 `
+
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+	if player == nil {
+		return nil
+	}
 
 	advances := classAdvances[player.Class]
 	if len(advances) == 0 {
@@ -528,17 +568,26 @@ That's not a class I'm aware of.
 			return errors.Wrap(err, "failed advancing player class")
 		}
 	}
+
 	return nil
 }
 
 // Quit deactivates a player's account
-// TODO: remember to deactivate instead of deleting
-func (h *handler) Quit(ctx context.Context, player *entities.Player, recipientID string) error {
+// TODO: remember to deactivate instead of deleting (also think of rejoin logic)
+func (h *handler) Quit(ctx context.Context, recipientID string) error {
 	quitMsg := `
 Heaven's Gate closes behind you.
 `
 
-	err := h.resource.DeletePlayer(ctx, recipientID)
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+	if player == nil {
+		return nil
+	}
+
+	err = h.resource.DeletePlayer(ctx, recipientID)
 	if err != nil {
 		return errors.Wrap(err, "failed quitting game")
 	}
@@ -551,13 +600,21 @@ Heaven's Gate closes behind you.
 }
 
 // ToggleUpdates toggles daily combat and battle reports in DMs
-func (h *handler) ToggleUpdates(ctx context.Context, player *entities.Player, recipientID string) error {
-	const noUpdates = `
+func (h *handler) ToggleUpdates(ctx context.Context, recipientID string) error {
+	const updatesOff = `
 You will no longer receive daily personal battle reports.
 `
-	const yesUpdates = `
+	const updatesOn = `
 You will now receive daily personal battle reports.
 `
+
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+	if player == nil {
+		return nil
+	}
 
 	receiveUpdates, err := h.resource.TogglePlayerUpdates(ctx, recipientID)
 	if err != nil {
@@ -565,31 +622,41 @@ You will now receive daily personal battle reports.
 	}
 
 	if receiveUpdates {
-		err = h.speaker.SendDM(recipientID, yesUpdates)
+		err = h.speaker.SendDM(recipientID, updatesOn)
 	} else {
-		err = h.speaker.SendDM(recipientID, noUpdates)
+		err = h.speaker.SendDM(recipientID, updatesOff)
 	}
 	if err != nil {
 		return errors.Wrap(err, "failed sending toggle updates message")
 	}
+
 	return nil
 }
 
 // InvalidCommand tells the player that their command wasn't recognized
-func (h *handler) InvalidCommand(ctx context.Context, player *entities.Player, recipientID string) error {
+func (h *handler) InvalidCommand(ctx context.Context, recipientID string) error {
 	const invalid = `
 That's not something I understand. Try seeking !help.
 `
 
-	err := h.speaker.SendDM(recipientID, invalid)
+	player, err := h.resource.GetPlayer(ctx, recipientID)
+	if err != nil {
+		return errors.Wrap(err, "failed parsing DM")
+	}
+	if player == nil {
+		return nil
+	}
+
+	err = h.speaker.SendDM(recipientID, invalid)
 	if err != nil {
 		return errors.Wrap(err, "failed sending invalid command message")
 	}
+
 	return nil
 }
 
 // Echo just sends a message to a player
-func (h *handler) Echo(ctx context.Context, player *entities.Player, recipientID string, msg string) error {
+func (h *handler) Echo(ctx context.Context, recipientID string, msg string) error {
 	err := h.speaker.SendDM(recipientID, "Just got the message: "+msg)
 	if err != nil {
 		return errors.Wrap(err, "failed sending echo message")
