@@ -5,17 +5,21 @@ import (
 	"github.com/yisaj/heavens_throne/twitspeak"
 )
 
+// StoryTeller contains the logic to generate combat/battle reports and send them
+// to the player
 type StoryTeller interface {
 	SendBattleUpdates(battleEvent *BattleEvent, combatEvents []*CombatEvent) error
 	PostMainThread() error
 }
 
+// A canary needs to be able to generate and send battle reports
 type canary struct {
 	speaker      twitspeak.TwitterSpeaker
 	resource     database.Resource
 	battleTweets []string
 }
 
+// NewStoryTeller constructs a new storyteller
 func NewStoryTeller(speaker twitspeak.TwitterSpeaker, resource database.Resource) StoryTeller {
 	return &canary{
 		speaker,

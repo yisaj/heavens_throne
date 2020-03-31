@@ -22,11 +22,12 @@ type handler struct {
 	logger     *logrus.Logger
 	WebhooksID string
 	dmParser   input.DMParser
-	speaker twitspeak.TwitterSpeaker
-	simlock *simulation.SimLock
+	speaker    twitspeak.TwitterSpeaker
+	simlock    *simulation.SimLock
 }
 
-func NewHandler(conf *config.Config, logger *logrus.Logger, dmParser input.DMParser, speaker twitspeak.TwitterSpeaker, simlock *simulation.SimLock) http.Handler {
+// newHandler returns a handler to arbitrate communication with twitter
+func newHandler(conf *config.Config, logger *logrus.Logger, dmParser input.DMParser, speaker twitspeak.TwitterSpeaker, simlock *simulation.SimLock) http.Handler {
 	h := &handler{
 		http.NewServeMux(),
 		logger,
@@ -50,6 +51,7 @@ func NewHandler(conf *config.Config, logger *logrus.Logger, dmParser input.DMPar
 	return h
 }
 
+// Event holds the data from Twitter user events. extraneous fields are stripped out
 type Event struct {
 	ForUserID           string `json:"for_user_id"`
 	DirectMessageEvents []struct {
@@ -62,6 +64,7 @@ type Event struct {
 	} `json:"direct_message_events"`
 }
 
+// handleCRC handles a challenge response check from twitter
 func (h *handler) handleCRC(w http.ResponseWriter, r *http.Request, secret string) {
 	// get crc_token parameter
 	tokens, ok := r.URL.Query()["crc_token"]
@@ -87,6 +90,7 @@ func (h *handler) handleCRC(w http.ResponseWriter, r *http.Request, secret strin
 	}
 }
 
+// handleEvent handles a user event from twitter, such as a DM
 func (h *handler) handleEvent(w http.ResponseWriter, r *http.Request) {
 	const busySimulating = `
 I'm busy simulating right now.'
@@ -119,6 +123,7 @@ I'm busy simulating right now.'
 	w.WriteHeader(200)
 }
 
+// ServeHTTP implements the serve functionality for the handler
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.logger.Debugf("request %s %s", r.Method, r.URL.Path)
 	h.mux.ServeHTTP(w, r)

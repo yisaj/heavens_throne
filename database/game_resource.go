@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// GameResource contains database methods for game data
 type GameResource interface {
 	IncrementDay(ctx context.Context) error
 }

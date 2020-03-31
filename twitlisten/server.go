@@ -16,6 +16,8 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
+// Listen spins up the HTTPS autocert server, hooks into the twitter api, and
+// starts listening for twitter user events
 // TODO: pass a message parser to the twitter listener
 func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource database.Resource, logger *logrus.Logger, simLock *simulation.SimLock) {
 	// check for webhooks id in database
@@ -55,7 +57,7 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	// build the twitter webhooks server
 	inputHandler := input.NewInputHandler(resource, speaker)
 	dmParser := input.NewDMParser(inputHandler, resource, logger)
-	twitterHandler := NewHandler(conf, logger, dmParser, speaker, simLock)
+	twitterHandler := newHandler(conf, logger, dmParser, speaker, simLock)
 	server := &http.Server{
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,

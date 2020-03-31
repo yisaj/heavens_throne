@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// Player defines the player object, mirroring the database
 type Player struct {
 	ID             int32
 	TwitterID      string `db:"twitter_id"`
@@ -19,6 +20,7 @@ type Player struct {
 	Rank           int16
 }
 
+// FormatClass outputs a pretty formatted string of the player's class and rank
 // TODO: rename horsearcher to courser
 func (p *Player) FormatClass() string {
 	classTranslation := map[string]string{
@@ -51,6 +53,7 @@ func (p *Player) FormatClass() string {
 	return fmt.Sprintf("%s %s", classTranslation[p.Class], rankTranslation[p.Rank])
 }
 
+// Stats defines the stats for a given class and rank
 type Stats struct {
 	Potency int
 	Defense int
@@ -80,10 +83,12 @@ var (
 	}
 )
 
+// GetStats returns the stats for a given player's class and rank
 func (p *Player) GetStats() Stats {
 	return classBaseStats[p.Class]
 }
 
+// Location defines the location object, mirroring the database
 type Location struct {
 	ID       int32
 	Name     string
@@ -91,6 +96,8 @@ type Location struct {
 	Occupier sql.NullString
 }
 
+// Logistic defines the logistic object, which provides unit counts relative to
+// a location. mirrors the database
 type Logistic struct {
 	LocationName string `db:"name"`
 	Count        int32

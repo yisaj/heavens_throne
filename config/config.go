@@ -17,6 +17,7 @@ const (
 	accessTokenSecretKey = "ACCESS_TOKEN_SECRET"
 )
 
+// Config defines the database and twitter configuration for the app
 type Config struct {
 	DatabaseURI       string
 	Domains           []string
@@ -28,6 +29,7 @@ type Config struct {
 	AccessTokenSecret string
 }
 
+// New returns a new config object constructed from environment variables
 func New() *Config {
 	domains := strings.Split(os.Getenv(prefix+domainsKey), ",")
 

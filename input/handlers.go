@@ -93,6 +93,7 @@ var (
 	}
 )
 
+// Handler contains methods to handle each of the possible player inputs
 type Handler interface {
 	Help(ctx context.Context, player *entities.Player, recipientID string) error
 	Status(ctx context.Context, player *entities.Player, recipientID string) error
@@ -106,11 +107,14 @@ type Handler interface {
 	Echo(ctx context.Context, player *entities.Player, recipientID string, msg string) error
 }
 
+// A player input handler has to be able to access database resources and respond
+// to the player via a twitter speaker
 type handler struct {
 	resource database.Resource
 	speaker  twitspeak.TwitterSpeaker
 }
 
+// NewInputHandler constructs a handler to handle player input
 func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeaker) Handler {
 	return &handler{
 		resource,
@@ -118,6 +122,7 @@ func NewInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeake
 	}
 }
 
+// Help sends the player a list of commands and info about the game
 func (h *handler) Help(ctx context.Context, player *entities.Player, recipientID string) error {
 	const newPlayerHelp = `
 	Type !join [order] to join.
@@ -167,6 +172,8 @@ Next Location: %s
 	return nil
 }
 
+// Logistics sends the player information about where allied units are and where
+// they're going
 func (h *handler) Logistics(ctx context.Context, player *entities.Player, recipientID string, locationString string) error {
 	const notFound = `
 That's not a place that I know of.
@@ -233,7 +240,6 @@ These are the leaving logistics
 		if err != nil {
 			return errors.Wrap(err, "failed getting logistics")
 		}
-		return nil
 	} else {
 		reg, err := regexp.Compile("[^a-zA-Z0-9]+")
 		if err != nil {
@@ -279,10 +285,11 @@ These are the leaving logistics
 		if err != nil {
 			return errors.Wrap(err, "failed getting location logistics")
 		}
-		return nil
 	}
+	return nil
 }
 
+// Join adds a new player to the game under the chosen order
 func (h *handler) Join(ctx context.Context, player *entities.Player, recipientID string, order string) error {
 	// TODO: write a real join message
 	const joinFormat = `
@@ -347,6 +354,7 @@ The Gate is closed to you. At least for this cycle.
 	return nil
 }
 
+// Move tries to set the player's next location to the given location
 func (h *handler) Move(ctx context.Context, player *entities.Player, recipientID string, locationString string) error {
 	const notFound = `
 That's not a place that I know of.
@@ -416,6 +424,7 @@ You are now moving to %s.
 	return nil
 }
 
+// Advance attempts to level a player up to another rank or class
 func (h *handler) Advance(ctx context.Context, player *entities.Player, recipientID string, class string) error {
 	const notExperienced = `
 You don't have enough experience.
@@ -471,7 +480,6 @@ That's not a class I'm aware of.
 			if err != nil {
 				return errors.Wrap(err, "failed advancing player rank")
 			}
-			return nil
 		} else {
 			// need to advance a class, which the user didn't provide
 			var msg strings.Builder
@@ -484,7 +492,6 @@ That's not a class I'm aware of.
 			if err != nil {
 				return errors.Wrap(err, "failed getting advance info")
 			}
-			return nil
 		}
 	} else {
 		reg, err := regexp.Compile("[^a-zA-Z]+")
@@ -493,6 +500,7 @@ That's not a class I'm aware of.
 		}
 		classString := reg.ReplaceAllString(class, "")
 
+		// look for the class advance by name
 		for _, advance := range advances {
 			if advance == classString {
 				oldClass := player.FormatClass()
@@ -519,10 +527,11 @@ That's not a class I'm aware of.
 		if err != nil {
 			return errors.Wrap(err, "failed advancing player class")
 		}
-		return nil
 	}
+	return nil
 }
 
+// Quit deactivates a player's account
 // TODO: remember to deactivate instead of deleting
 func (h *handler) Quit(ctx context.Context, player *entities.Player, recipientID string) error {
 	quitMsg := `
@@ -541,6 +550,7 @@ Heaven's Gate closes behind you.
 	return nil
 }
 
+// ToggleUpdates toggles daily combat and battle reports in DMs
 func (h *handler) ToggleUpdates(ctx context.Context, player *entities.Player, recipientID string) error {
 	const noUpdates = `
 You will no longer receive daily personal battle reports.
@@ -565,6 +575,7 @@ You will now receive daily personal battle reports.
 	return nil
 }
 
+// InvalidCommand tells the player that their command wasn't recognized
 func (h *handler) InvalidCommand(ctx context.Context, player *entities.Player, recipientID string) error {
 	const invalid = `
 That's not something I understand. Try seeking !help.
@@ -577,6 +588,7 @@ That's not something I understand. Try seeking !help.
 	return nil
 }
 
+// Echo just sends a message to a player
 func (h *handler) Echo(ctx context.Context, player *entities.Player, recipientID string, msg string) error {
 	err := h.speaker.SendDM(recipientID, "Just got the message: "+msg)
 	if err != nil {

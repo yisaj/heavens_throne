@@ -1,5 +1,6 @@
 package database
 
+// TODO: migrate from sqlx to pgx
 import (
 	"time"
 
@@ -19,6 +20,7 @@ const (
 	migrationsURL         = "file://migrations"
 )
 
+// Resource is the wrapper interface that includes all database access methods
 type Resource interface {
 	LocationResource
 	PlayerResource
@@ -30,6 +32,7 @@ type connection struct {
 	db *sqlx.DB
 }
 
+// Connect opens a connection to the database and returns the resource object
 func Connect(conf *config.Config) (Resource, error) {
 	// open and ping db connection
 	var db *sqlx.DB

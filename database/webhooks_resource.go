@@ -3,9 +3,11 @@ package database
 import (
 	"context"
 	"database/sql"
+
 	"github.com/pkg/errors"
 )
 
+// WebhooksResource contains database methods for webhooks data
 type WebhooksResource interface {
 	GetWebhooksID(ctx context.Context) (string, error)
 	SetWebhooksID(ctx context.Context, webhooksID string) error

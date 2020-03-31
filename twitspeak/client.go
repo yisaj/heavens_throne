@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"io"
 	"math/rand"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"time"
 	"unsafe"
+
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/pkg/errors"
 	"github.com/yisaj/heavens_throne/config"
@@ -37,6 +38,7 @@ type speaker struct {
 	conf   *config.Config
 }
 
+// TwitterSpeaker contains the methods to send the twitter api HTTPS messages
 type TwitterSpeaker interface {
 	TriggerCRC(webhookID string) error
 	GetWebhook() (string, error)
@@ -45,12 +47,14 @@ type TwitterSpeaker interface {
 	SubscribeUser() error
 }
 
-type TwitterResponse struct {
-	Errors []TwitterError
+// twitterResponse holds the response for any message sent to twitter
+type twitterResponse struct {
+	Errors []twitterError
 	ID     string
 }
 
-func (tr TwitterResponse) GetErrors() error {
+// getErrors parses out all the errors in a twitter api response
+func (tr twitterResponse) getErrors() error {
 	if len(tr.Errors) > 0 {
 		var err error = tr.Errors[0]
 		for _, twitterErr := range tr.Errors[1:] {
@@ -61,17 +65,18 @@ func (tr TwitterResponse) GetErrors() error {
 	return nil
 }
 
-type TwitterError struct {
+// twitterError is the standard error format for a twitter api error
+type twitterError struct {
 	Message string
 	Code    int32
 }
 
-func (te TwitterError) Error() string {
+// Error fulfils the error interface for twitterError
+func (te twitterError) Error() string {
 	return fmt.Sprintf("Twitter Err %d: %s", te.Code, te.Message)
 }
 
-
-
+// NewSpeaker returns a new speaker to send messages to the twitter api with
 func NewSpeaker(conf *config.Config) TwitterSpeaker {
 	client := &http.Client{
 		Timeout: time.Second * 10,
@@ -83,6 +88,7 @@ func NewSpeaker(conf *config.Config) TwitterSpeaker {
 	}
 }
 
+//
 func generateNonce(length int) string {
 	nonce := make([]byte, length)
 
@@ -100,6 +106,8 @@ func generateNonce(length int) string {
 	return *(*string)(unsafe.Pointer(&nonce))
 }
 
+// authorizeRequest fills in an http request so that the twitter api will accept
+// it as authorized
 func (s *speaker) authorizeRequest(req *http.Request) error {
 	// collect the values for the authorization header
 	consumerKey := s.conf.ConsumerKey
@@ -172,6 +180,8 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 	return nil
 }
 
+// TriggerCRC sends a message to the twitter api requesting a challenge response
+// check. used on application wakeup to connect to the twitter api
 func (s *speaker) TriggerCRC(webhookID string) error {
 	// send a request to the twitter API to manually trigger a challenge-response check
 	triggerCRCPath := fmt.Sprintf("/account_activity/all/%s/webhooks/%s.json", s.conf.TwitterEnvName, webhookID)
@@ -190,19 +200,20 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 		return errors.Wrap(err, "failed requesting trigger CRC")
 	}
 
-	var twitterRes TwitterResponse
+	var twitterRes twitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
 
-	err = twitterRes.GetErrors()
+	err = twitterRes.getErrors()
 	if err != nil {
 		return errors.Wrap(err, "trigger CRC response errors")
 	}
 	return nil
 }
 
+// GetWebhook gets the webhook id from the twitter api
 func (s *speaker) GetWebhook() (string, error) {
 	getWebhookPath := fmt.Sprintf("/account_activity/all/%s/webhooks.json", s.conf.TwitterEnvName)
 
@@ -233,6 +244,7 @@ func (s *speaker) GetWebhook() (string, error) {
 	return "", nil
 }
 
+// RegisterWebhook registers the app as a new webhook with twitter and returns the id
 func (s *speaker) RegisterWebhook() (string, error) {
 	// send a request to the twitter API to register the configured URL as a webhook
 	registerWebhookPath := fmt.Sprintf("/account_activity/all/%s/webhooks.json", s.conf.TwitterEnvName)
@@ -256,19 +268,20 @@ func (s *speaker) RegisterWebhook() (string, error) {
 		return "", errors.Wrap(err, "failed requesting webhooks registration")
 	}
 
-	var twitterRes TwitterResponse
+	var twitterRes twitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil {
 		return "", errors.Wrap(err, "failed decoding register webhook response")
 	}
 
-	err = twitterRes.GetErrors()
+	err = twitterRes.getErrors()
 	if err != nil {
 		return "", errors.Wrap(err, "register webhook response errors")
 	}
 	return twitterRes.ID, nil
 }
 
+// SendDM sends a twitter direct message to a given user
 func (s *speaker) SendDM(userID string, msg string) error {
 	// escape common control characters
 	replacer := strings.NewReplacer("\n", `\n`, "\r", `\r`, "\t", `\t`)
@@ -296,19 +309,21 @@ func (s *speaker) SendDM(userID string, msg string) error {
 		return errors.Wrap(err, "failed posting direct message")
 	}
 
-	var twitterRes TwitterResponse
+	var twitterRes twitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil {
 		return errors.Wrap(err, "failed decoding post direct message response")
 	}
 
-	err = twitterRes.GetErrors()
+	err = twitterRes.getErrors()
 	if err != nil {
 		return errors.Wrap(err, "post direct message response errors")
 	}
 	return nil
 }
 
+// SubscribeUser subscribes to the heavens throne user account in order to receive
+// user events
 func (s *speaker) SubscribeUser() error {
 	subscribeUserPath := fmt.Sprintf("/%s/subscriptions.json", s.conf.TwitterEnvName)
 	req, err := http.NewRequest("POST", apiPrefix+subscribeUserPath, nil)
@@ -326,13 +341,13 @@ func (s *speaker) SubscribeUser() error {
 		return errors.Wrap(err, "failed requesting user subscription")
 	}
 
-	var twitterRes TwitterResponse
+	var twitterRes twitterResponse
 	err = json.NewDecoder(res.Body).Decode(&twitterRes)
 	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
 
-	err = twitterRes.GetErrors()
+	err = twitterRes.getErrors()
 	if err != nil {
 		return errors.Wrap(err, "subscribe user response errors")
 	}

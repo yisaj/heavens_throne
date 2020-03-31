@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// LocationResource contains database methods for map location data
 type LocationResource interface {
 	GetLocation(ctx context.Context, locationID int32) (*entities.Location, error)
 	GetAdjacentLocations(ctx context.Context, locationID int32) ([]int32, error)

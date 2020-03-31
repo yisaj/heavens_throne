@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// PlayerResource contains database methods for player data
 type PlayerResource interface {
 	CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error)
 	GetPlayer(ctx context.Context, twitterID string) (*entities.Player, error)
