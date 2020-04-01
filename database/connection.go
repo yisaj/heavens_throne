@@ -12,6 +12,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -33,7 +34,7 @@ type connection struct {
 }
 
 // Connect opens a connection to the database and returns the resource object
-func Connect(conf *config.Config) (Resource, error) {
+func Connect(conf *config.Config, logger *logrus.Logger) (Resource, error) {
 	// open and ping db connection
 	var db *sqlx.DB
 	var err error
@@ -42,7 +43,8 @@ func Connect(conf *config.Config) (Resource, error) {
 		if err == nil {
 			break
 		}
-		// TODO: log an error here
+
+		logger.Errorf("Database connection error: %s\n", err.Error())
 		time.Sleep(time.Second)
 	}
 	if err != nil {
