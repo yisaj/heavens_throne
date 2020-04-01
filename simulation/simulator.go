@@ -290,7 +290,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 				// make sure aggro and medic counts are correct
 				if target.Class != "monsterknight" {
 					totalAggros["standard"][target.MartialOrder] -= targetStats.Aggro
-					totalAggros["horseArcher"][target.MartialOrder]--
+					totalAggros["horsearcher"][target.MartialOrder]--
 				}
 				totalAggros["ranged"][target.MartialOrder] -= targetStats.Aggro
 				if target.Class == "medic" || target.Class == "healer" {
@@ -309,7 +309,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 						// make sure aggro and medic counts are correct
 						if player.Class != "monsterknight" {
 							totalAggros["standard"][player.MartialOrder] -= playerStats.Aggro
-							totalAggros["horseArcher"][player.MartialOrder]--
+							totalAggros["horsearcher"][player.MartialOrder]--
 						}
 						totalAggros["ranged"][player.MartialOrder] -= playerStats.Aggro
 						if player.Class == "medic" || player.Class == "healer" {
@@ -375,7 +375,7 @@ func calculateTotalAggros(attackOrder *bst.Map) (map[string]map[string]int, map[
 			"Order Gorgona": 0,
 			"The Baaturate": 0,
 		},
-		"horseArcher": {
+		"horsearcher": {
 			"Staghorn Sect": 0,
 			"Order Gorgona": 0,
 			"The Baaturate": 0,
@@ -394,7 +394,7 @@ func calculateTotalAggros(attackOrder *bst.Map) (map[string]map[string]int, map[
 		// calculate total aggros
 		if player.Class != "monsterknight" {
 			totalAggros["standard"][player.MartialOrder] += stats.Aggro
-			totalAggros["horseArcher"][player.MartialOrder]++
+			totalAggros["horsearcher"][player.MartialOrder]++
 		}
 		totalAggros["ranged"][player.MartialOrder] += stats.Aggro
 
@@ -417,7 +417,7 @@ func calculateEnemyAggro(player *entities.Player, playerIsRanged bool, totalAggr
 		}
 		return enemyAggro
 	} else if player.Class == "horsearcher" {
-		for order, aggro := range totalAggros["horseArcher"] {
+		for order, aggro := range totalAggros["horsearcher"] {
 			if order != player.MartialOrder {
 				enemyAggro += aggro
 			}

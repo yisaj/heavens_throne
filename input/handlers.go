@@ -86,7 +86,7 @@ var (
 		"glaivemaster":  "GLAIVEMASTER: ",
 		"legionary":     "LEGIONARY: ",
 		"monsterknight": "MONSTER KNIGHT: ",
-		"horsearcher":   "HORSE ARCHER: ",
+		"horsearcher":   "COURSER: ",
 		"mage":          "MAGE: ",
 		"healer":        "HEALER: ",
 	}

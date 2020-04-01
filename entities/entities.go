@@ -34,7 +34,7 @@ func (p *Player) FormatClass() string {
 		"heavycavalry":  "Heavy Cavalry",
 		"monsterknight": "Monster Knight",
 		"lightcavalry":  "Light Cavalry",
-		"horsearcher":   "Horse Archer",
+		"horsearcher":   "Courser",
 		"ranger":        "Ranger",
 		"archer":        "Archer",
 		"mage":          "Mage",
