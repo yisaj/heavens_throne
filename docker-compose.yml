@@ -17,7 +17,7 @@ services:
       - HTHRONE_ENDPOINT=/hthrone
       - HTHRONE_DOMAIN=twitter.summerofgame.com
       - HTHRONE_TWITTER_ENV_NAME=hthrone
-      - HTHRONE_DEBUG=${HTHRONE_DEBUG}
+      #- HTHRONE_DEBUG=1
     env_file:
       - .env
     ports:
