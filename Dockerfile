@@ -15,6 +15,7 @@ COPY config config
 COPY twitlisten twitlisten
 COPY twitspeak twitspeak
 COPY input input
+COPY simulation simulation
 COPY main.go main.go
 
 # build the app
