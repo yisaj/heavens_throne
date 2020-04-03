@@ -121,7 +121,6 @@ type BattleEvent struct {
 
 // Simulate simulates a day and makes the appropriate changes to the database
 func (ns *NormalSimulator) Simulate() error {
-	// TODO ENGINEER: methodize all the helper functions if there's going to be more than one simulator type
 	ns.lock.WLock()
 
 	// increment the day and move all players
@@ -241,10 +240,10 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 	combatEvents := make([]*CombatEvent, 0, len(players))
 
 	// calculate attack order
-	livingPlayers := calculateAttackOrder(players)
+	livingPlayers := ns.calculateAttackOrder(players)
 
 	// calculate total aggros
-	totalAggros, medicPowers := calculateTotalAggros(livingPlayers)
+	totalAggros, medicPowers := ns.calculateTotalAggros(livingPlayers)
 
 	// for each player take an action
 	for iter := livingPlayers.Iterator(); iter.Next(); {
@@ -256,7 +255,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 
 		if player.Class == "healer" {
 			// try to revive an ally
-			combatEvents = append(combatEvents, reviveTarget(player, deadPlayers, livingPlayers))
+			combatEvents = append(combatEvents, ns.reviveTarget(player, deadPlayers, livingPlayers))
 		}
 
 		// attack a random enemy
@@ -266,10 +265,10 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 		}
 		for i := 0; i < numAttacks; i++ {
 			// calculate total enemy aggro
-			totalEnemyAggro := calculateEnemyAggro(player, playerIsRanged, totalAggros)
+			totalEnemyAggro := ns.calculateEnemyAggro(player, playerIsRanged, totalAggros)
 
 			// select target
-			target, targetInitiative := selectTarget(player, livingPlayers, totalEnemyAggro, playerIsRanged)
+			target, targetInitiative := ns.selectTarget(player, livingPlayers, totalEnemyAggro, playerIsRanged)
 			targetStats := target.GetStats()
 
 			if target == nil {
@@ -279,7 +278,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 			}
 
 			// decide what to do
-			attackEvent := attackTarget(player, target, medicPowers[target.MartialOrder])
+			attackEvent := ns.attackTarget(player, target, medicPowers[target.MartialOrder])
 			fmt.Printf("HRY %+v\n", attackEvent)
 			combatEvents = append(combatEvents, attackEvent)
 			if attackEvent.Result == Success {
@@ -299,7 +298,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 
 			} else {
 				if target.Class == "glaivemaster" {
-					counterAttackEvent := counterAttackTarget(target, player, medicPowers[player.MartialOrder])
+					counterAttackEvent := ns.counterAttackTarget(target, player, medicPowers[player.MartialOrder])
 					combatEvents = append(combatEvents, counterAttackEvent)
 					if counterAttackEvent.Result == Success {
 						// move player to graveyard
@@ -340,7 +339,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 	return survivors, fatalities, combatEvents, nil
 }
 
-func selectTarget(player *entities.Player, livingPlayers *bst.Map, totalEnemyAggro int, playerIsRanged bool) (*entities.Player, bst.Float64) {
+func (ns *NormalSimulator) selectTarget(player *entities.Player, livingPlayers *bst.Map, totalEnemyAggro int, playerIsRanged bool) (*entities.Player, bst.Float64) {
 	aggroLeft := rand.Intn(totalEnemyAggro)
 	var target *entities.Player
 	var targetInitiative bst.Float64
@@ -363,7 +362,7 @@ func selectTarget(player *entities.Player, livingPlayers *bst.Map, totalEnemyAgg
 	return target, targetInitiative
 }
 
-func calculateTotalAggros(attackOrder *bst.Map) (map[string]map[string]int, map[string]int) {
+func (ns *NormalSimulator) calculateTotalAggros(attackOrder *bst.Map) (map[string]map[string]int, map[string]int) {
 	totalAggros := map[string]map[string]int{
 		"standard": {
 			"Staghorn Sect": 0,
@@ -407,7 +406,7 @@ func calculateTotalAggros(attackOrder *bst.Map) (map[string]map[string]int, map[
 	return totalAggros, medicPowers
 }
 
-func calculateEnemyAggro(player *entities.Player, playerIsRanged bool, totalAggros map[string]map[string]int) int {
+func (ns *NormalSimulator) calculateEnemyAggro(player *entities.Player, playerIsRanged bool, totalAggros map[string]map[string]int) int {
 	enemyAggro := 0
 	if playerIsRanged {
 		for order, aggro := range totalAggros["ranged"] {
@@ -432,7 +431,7 @@ func calculateEnemyAggro(player *entities.Player, playerIsRanged bool, totalAggr
 	return enemyAggro
 }
 
-func reviveTarget(player *entities.Player, deadPlayers map[string]*bst.Map, attackOrder *bst.Map) *CombatEvent {
+func (ns *NormalSimulator) reviveTarget(player *entities.Player, deadPlayers map[string]*bst.Map, attackOrder *bst.Map) *CombatEvent {
 	// try to revive an ally
 	myDead := deadPlayers[player.MartialOrder]
 	iter := myDead.Iterator()
@@ -450,7 +449,7 @@ func reviveTarget(player *entities.Player, deadPlayers map[string]*bst.Map, atta
 	return nil
 }
 
-func calculateAttackOrder(players []*entities.Player) *bst.Map {
+func (ns *NormalSimulator) calculateAttackOrder(players []*entities.Player) *bst.Map {
 	attackOrder := bst.NewMap(len(players))
 	for _, player := range players {
 		playerStats := player.GetStats()
@@ -466,13 +465,13 @@ func calculateAttackOrder(players []*entities.Player) *bst.Map {
 	return attackOrder
 }
 
-func counterAttackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) *CombatEvent {
-	event := attackTarget(attacker, defender, medicBonus)
+func (ns *NormalSimulator) counterAttackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) *CombatEvent {
+	event := ns.attackTarget(attacker, defender, medicBonus)
 	event.EventType = CounterAttack
 	return event
 }
 
-func attackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) *CombatEvent {
+func (ns *NormalSimulator) attackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) *CombatEvent {
 	attackerStats := attacker.GetStats()
 	defenderStats := defender.GetStats()
 
