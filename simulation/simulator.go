@@ -250,8 +250,6 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 		player := iter.Value().(*entities.Player)
 		playerStats := player.GetStats()
 		playerInitiative := iter.Key().(bst.Float64)
-		// TODO ENGINEER: move this to a method maybe?
-		playerIsRanged := player.Class == "archer" || player.Class == "mage"
 
 		if player.Class == "healer" {
 			// try to revive an ally
@@ -265,10 +263,10 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 		}
 		for i := 0; i < numAttacks; i++ {
 			// calculate total enemy aggro
-			totalEnemyAggro := ns.calculateEnemyAggro(player, playerIsRanged, totalAggros)
+			totalEnemyAggro := ns.calculateEnemyAggro(player, totalAggros)
 
 			// select target
-			target, targetInitiative := ns.selectTarget(player, livingPlayers, totalEnemyAggro, playerIsRanged)
+			target, targetInitiative := ns.selectTarget(player, livingPlayers, totalEnemyAggro)
 			targetStats := target.GetStats()
 
 			if target == nil {
@@ -339,14 +337,14 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 	return survivors, fatalities, combatEvents, nil
 }
 
-func (ns *NormalSimulator) selectTarget(player *entities.Player, livingPlayers *bst.Map, totalEnemyAggro int, playerIsRanged bool) (*entities.Player, bst.Float64) {
+func (ns *NormalSimulator) selectTarget(player *entities.Player, livingPlayers *bst.Map, totalEnemyAggro int) (*entities.Player, bst.Float64) {
 	aggroLeft := rand.Intn(totalEnemyAggro)
 	var target *entities.Player
 	var targetInitiative bst.Float64
 	for iter := livingPlayers.Iterator(); iter.Next(); {
 		target = iter.Value().(*entities.Player)
 		targetInitiative = iter.Key().(bst.Float64)
-		if target.MartialOrder == player.MartialOrder || (target.Class == "monsterknight" && !playerIsRanged) {
+		if target.MartialOrder == player.MartialOrder || (target.Class == "monsterknight" && !player.IsRanged()) {
 			continue
 		}
 
@@ -406,9 +404,9 @@ func (ns *NormalSimulator) calculateTotalAggros(attackOrder *bst.Map) (map[strin
 	return totalAggros, medicPowers
 }
 
-func (ns *NormalSimulator) calculateEnemyAggro(player *entities.Player, playerIsRanged bool, totalAggros map[string]map[string]int) int {
+func (ns *NormalSimulator) calculateEnemyAggro(player *entities.Player, totalAggros map[string]map[string]int) int {
 	enemyAggro := 0
-	if playerIsRanged {
+	if player.IsRanged() {
 		for order, aggro := range totalAggros["ranged"] {
 			if order != player.MartialOrder {
 				enemyAggro += aggro

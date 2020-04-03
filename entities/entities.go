@@ -87,6 +87,11 @@ func (p *Player) GetStats() Stats {
 	return classBaseStats[p.Class]
 }
 
+// IsRanged returns whether the player is a ranged class
+func (p *Player) IsRanged() bool {
+	return p.Class == "archer" || p.Class == "mage"
+}
+
 // Location defines the location object, mirroring the database
 type Location struct {
 	ID       int32

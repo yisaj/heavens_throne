@@ -51,7 +51,8 @@ func initializePlayers() []*entities.Player {
 
 func TestCalculateAttackOrder(t *testing.T) {
 	players := initializePlayers()
-	attackOrder := calculateAttackOrder(players)
+	sim := NewNormalSimulator(nil, nil, nil)
+	attackOrder := sim.calculateAttackOrder(players)
 
 	for it := attackOrder.Iterator(); it.Next(); {
 		found := false
@@ -88,7 +89,8 @@ func TestAttackTarget(t *testing.T) {
 		MartialOrder: "The Baaturate",
 	}
 
-	event := attackTarget(&attacker, &defender, 0)
+	sim := NewNormalSimulator(nil, nil, nil)
+	event := sim.attackTarget(&attacker, &defender, 0)
 	t.Logf("%+v\n", event)
 }
 
