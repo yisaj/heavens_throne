@@ -17,7 +17,7 @@ func main() {
 
 	conf := config.New()
 
-	if conf.Debug {
+	if conf.Debug == "" {
 		logger.SetLevel(logrus.DebugLevel)
 	}
 
