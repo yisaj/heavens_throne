@@ -149,13 +149,15 @@ func (h *handler) Help(ctx context.Context, recipientID string) error {
 
 func (h *handler) Status(ctx context.Context, recipientID string) error {
 	// TODO WRITE: write a real status message
-	// TODO ENGINEER: handle available advances text
 	const statusFormat = `
 Order: %s
 Class: %s
 Experience: %d
 Location: %s
 Next Location: %s
+`
+	const advanceFormat = `
+You have an !advance available
 `
 
 	player, err := h.resource.GetPlayer(ctx, recipientID)
@@ -176,7 +178,14 @@ Next Location: %s
 	}
 
 	msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name, nextLocation.Name)
+	if player.Experience >= 100 {
+		msg += fmt.Sprintf(advanceFormat)
+	}
+
 	err = h.speaker.SendDM(recipientID, msg)
+	if err != nil {
+		return errors.Wrap(err, "failed sending help message")
+	}
 
 	return nil
 }
@@ -457,6 +466,7 @@ You are now moving to %s.
 }
 
 // Advance attempts to level a player up to another rank or class
+// TODO ENGINEER: think about if rank advance with a class name should error or just auto rank advance
 func (h *handler) Advance(ctx context.Context, recipientID string, class string) error {
 	const notExperienced = `
 You don't have enough experience.
@@ -503,7 +513,7 @@ That's not a class I'm aware of.
 			}
 			return nil
 		}
-
+		// TODO ENGINEER: move can advance, next advance, max rank, etc logic to player object
 		if player.Rank < maxClassRanks[player.Class] {
 			// advance a rank
 			oldRank := player.FormatClass()
