@@ -148,7 +148,7 @@ func (h *handler) Help(ctx context.Context, recipientID string) error {
 }
 
 func (h *handler) Status(ctx context.Context, recipientID string) error {
-	// TODO WRITING: write a real status message
+	// TODO WRITE: write a real status message
 	// TODO ENGINEER: handle available advances text
 	const statusFormat = `
 Order: %s
@@ -309,7 +309,7 @@ These are the leaving logistics
 
 // Join adds a new player to the game under the chosen order
 func (h *handler) Join(ctx context.Context, recipientID string, order string) error {
-	// TODO WRITING: write a real join message
+	// TODO WRITE: write a real join message
 	const joinFormat = `
 ORDER: %s
 CLASS: %s

@@ -80,6 +80,7 @@ type CombatResult int
 const (
 	Success CombatResult = iota
 	Failure
+	NoTarget
 )
 
 // CombatEvent details what happened in a particular instance of combat
@@ -143,6 +144,7 @@ func (ns *NormalSimulator) Simulate() error {
 
 	// for each location simulate a battle
 	for locationID, players := range playersByLocation {
+		// TODO ENGINEER: handle locations with no enemy combatants
 		survivors, fatalities, combatEvents, err := ns.SimulateBattle(locationID, players)
 		if err != nil {
 			return errors.Wrap(err, "failed simulation")
@@ -231,7 +233,6 @@ func (ns *NormalSimulator) giveCombatExperience(event *CombatEvent) {
 
 // SimulateBattle simulates a battle at a single location
 func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Player) (map[string][]*entities.Player, map[string][]*entities.Player, []*CombatEvent, error) {
-	// TODO ENGINEER: handle non actions like trying to revive when nobody is rez-able
 	deadPlayers := map[string]*bst.Map{
 		"Staghorn Sect": bst.NewMap(10),
 		"Order Gorgona": bst.NewMap(10),
@@ -253,7 +254,8 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 
 		if player.Class == "healer" {
 			// try to revive an ally
-			combatEvents = append(combatEvents, ns.reviveTarget(player, deadPlayers, livingPlayers))
+			reviveEvent := ns.reviveTarget(player, deadPlayers, livingPlayers)
+			combatEvents = append(combatEvents, reviveEvent)
 		}
 
 		// attack a random enemy
@@ -270,8 +272,8 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 			targetStats := target.GetStats()
 
 			if target == nil {
-				// TODO ENGINEER: sometimes a player may have no targets for a legitimate reason
-				//return nil, nil, errors.New("failed to select a combat target")
+				attackEvent := &CombatEvent{nil, player, Attack, NoTarget}
+				combatEvents = append(combatEvents, attackEvent)
 				continue
 			}
 
@@ -429,8 +431,10 @@ func (ns *NormalSimulator) calculateEnemyAggro(player *entities.Player, totalAgg
 	return enemyAggro
 }
 
+// reviveTarget attempts to return an allied player from the dead and back to the battle
 func (ns *NormalSimulator) reviveTarget(player *entities.Player, deadPlayers map[string]*bst.Map, attackOrder *bst.Map) *CombatEvent {
 	// try to revive an ally
+	// TODO DESIGN: figure revive probability rates
 	myDead := deadPlayers[player.MartialOrder]
 	iter := myDead.Iterator()
 	iter.Next()
@@ -444,7 +448,7 @@ func (ns *NormalSimulator) reviveTarget(player *entities.Player, deadPlayers map
 		}
 		return &CombatEvent{target, player, Revive, Failure}
 	}
-	return nil
+	return &CombatEvent{nil, player, Revive, NoTarget}
 }
 
 func (ns *NormalSimulator) calculateAttackOrder(players []*entities.Player) *bst.Map {
