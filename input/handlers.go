@@ -192,6 +192,7 @@ You have an !advance available
 
 // Logistics sends the player information about where allied units are and where
 // they're going
+// TODO ENGINEER: this shit is broke yo. displayed logistics are reversed, seemingly?
 func (h *handler) Logistics(ctx context.Context, recipientID string, locationString string) error {
 	const notFound = `
 That's not a place that I know of.

@@ -15,6 +15,7 @@ const (
 	twitterEnvNameKey    = "TWITTER_ENV_NAME"
 	accessTokenKey       = "ACCESS_TOKEN"
 	accessTokenSecretKey = "ACCESS_TOKEN_SECRET"
+	debugKey             = "DEBUG"
 )
 
 // Config defines the database and twitter configuration for the app
@@ -27,6 +28,7 @@ type Config struct {
 	TwitterEnvName    string
 	AccessToken       string
 	AccessTokenSecret string
+	Debug             string
 }
 
 // New returns a new config object constructed from environment variables
@@ -42,5 +44,6 @@ func New() *Config {
 		TwitterEnvName:    os.Getenv(prefix + twitterEnvNameKey),
 		AccessToken:       os.Getenv(prefix + accessTokenKey),
 		AccessTokenSecret: os.Getenv(prefix + accessTokenSecretKey),
+		Debug:             os.Getenv(prefix + debugKey),
 	}
 }

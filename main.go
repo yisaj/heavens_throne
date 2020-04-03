@@ -17,6 +17,10 @@ func main() {
 
 	conf := config.New()
 
+	if conf.Debug {
+		logger.SetLevel(logrus.DebugLevel)
+	}
+
 	// spin up connection to database
 	resource, err := database.Connect(conf, logger)
 	if err != nil {

@@ -88,6 +88,8 @@ func (h *handler) handleCRC(w http.ResponseWriter, r *http.Request, secret strin
 	if err != nil {
 		h.logger.WithError(err).Error("failed writing to crc response")
 	}
+
+	h.logger.Info("handled CRC request")
 }
 
 // handleEvent handles a user event from twitter, such as a DM

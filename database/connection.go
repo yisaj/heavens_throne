@@ -44,7 +44,7 @@ func Connect(conf *config.Config, logger *logrus.Logger) (Resource, error) {
 			break
 		}
 
-		logger.Errorf("Database connection error: %s\n", err.Error())
+		logger.WithError(err).Error("Database connection error")
 		time.Sleep(time.Second)
 	}
 	if err != nil {
