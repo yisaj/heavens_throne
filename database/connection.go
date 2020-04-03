@@ -1,6 +1,6 @@
 package database
 
-// TODO: migrate from sqlx to pgx
+// TODO ENGINEER: migrate from sqlx to pgx
 import (
 	"time"
 

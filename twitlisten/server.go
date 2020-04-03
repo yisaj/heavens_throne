@@ -18,7 +18,6 @@ import (
 
 // Listen spins up the HTTPS autocert server, hooks into the twitter api, and
 // starts listening for twitter user events
-// TODO: pass a message parser to the twitter listener
 func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource database.Resource, logger *logrus.Logger, simLock *simulation.SimLock) {
 	// check for webhooks id in database
 	webhooksID, err := resource.GetWebhooksID(context.TODO())

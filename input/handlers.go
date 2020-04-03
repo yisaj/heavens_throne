@@ -148,8 +148,8 @@ func (h *handler) Help(ctx context.Context, recipientID string) error {
 }
 
 func (h *handler) Status(ctx context.Context, recipientID string) error {
-	// TODO: write a real status message
-	// TODO: handle available advances text
+	// TODO WRITING: write a real status message
+	// TODO ENGINEER: handle available advances text
 	const statusFormat = `
 Order: %s
 Class: %s
@@ -309,7 +309,7 @@ These are the leaving logistics
 
 // Join adds a new player to the game under the chosen order
 func (h *handler) Join(ctx context.Context, recipientID string, order string) error {
-	// TODO: write a real join message
+	// TODO WRITING: write a real join message
 	const joinFormat = `
 ORDER: %s
 CLASS: %s
@@ -573,7 +573,7 @@ That's not a class I'm aware of.
 }
 
 // Quit deactivates a player's account
-// TODO: remember to deactivate instead of deleting (also think of rejoin logic)
+// TODO DESIGN: remember to deactivate instead of deleting (also think of rejoin logic)
 func (h *handler) Quit(ctx context.Context, recipientID string) error {
 	quitMsg := `
 Heaven's Gate closes behind you.

@@ -121,7 +121,7 @@ type BattleEvent struct {
 
 // Simulate simulates a day and makes the appropriate changes to the database
 func (ns *NormalSimulator) Simulate() error {
-	// TODO: methodize all the helper functions if there's going to be more than one simulator type
+	// TODO ENGINEER: methodize all the helper functions if there's going to be more than one simulator type
 	ns.lock.WLock()
 
 	// increment the day and move all players
@@ -216,7 +216,7 @@ func (ns *NormalSimulator) Simulate() error {
 }
 
 func (ns *NormalSimulator) giveCombatExperience(event *CombatEvent) {
-	// TODO: do this
+	// TODO DESIGN: do this
 	/*
 		if event.Result == Success {
 			if event.Attacker.ID == playerID {
@@ -232,7 +232,7 @@ func (ns *NormalSimulator) giveCombatExperience(event *CombatEvent) {
 
 // SimulateBattle simulates a battle at a single location
 func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Player) (map[string][]*entities.Player, map[string][]*entities.Player, []*CombatEvent, error) {
-	// TODO: handle non actions like trying to revive when nobody is rez-able
+	// TODO ENGINEER: handle non actions like trying to revive when nobody is rez-able
 	deadPlayers := map[string]*bst.Map{
 		"Staghorn Sect": bst.NewMap(10),
 		"Order Gorgona": bst.NewMap(10),
@@ -251,7 +251,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 		player := iter.Value().(*entities.Player)
 		playerStats := player.GetStats()
 		playerInitiative := iter.Key().(bst.Float64)
-		// TODO: move this to a method maybe?
+		// TODO ENGINEER: move this to a method maybe?
 		playerIsRanged := player.Class == "archer" || player.Class == "mage"
 
 		if player.Class == "healer" {
@@ -273,7 +273,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Pl
 			targetStats := target.GetStats()
 
 			if target == nil {
-				// TODO: sometimes a player may have no targets for a legitimate reason
+				// TODO ENGINEER: sometimes a player may have no targets for a legitimate reason
 				//return nil, nil, errors.New("failed to select a combat target")
 				continue
 			}
@@ -489,7 +489,7 @@ func attackTarget(attacker *entities.Player, defender *entities.Player, medicBon
 	defensePower := defenderStats.Defense
 
 	// medic bonus
-	// TODO: determine scaling of medic bonus
+	// TODO DESIGN: determine scaling of medic bonus
 	defense := float64(defensePower) + float64(medicBonus)/1000.*10
 	// spear bonus
 	if attackerIsCavalry && defenderIsSpear {
@@ -497,7 +497,7 @@ func attackTarget(attacker *entities.Player, defender *entities.Player, medicBon
 	} else if attackerIsSpear && defenderIsCavalry {
 		attackPower += spearAttackBonus
 	}
-	// TODO: implement defender's bonus
+	// TODO DESIGN: implement defender's bonus
 
 	attack := rand.NormFloat64()*attackStdDev + float64(attackPower)
 

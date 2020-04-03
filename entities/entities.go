@@ -21,7 +21,6 @@ type Player struct {
 }
 
 // FormatClass outputs a pretty formatted string of the player's class and rank
-// TODO: rename horsearcher to courser
 func (p *Player) FormatClass() string {
 	classTranslation := map[string]string{
 		"recruit":       "Initiate",
@@ -61,7 +60,7 @@ type Stats struct {
 	Aggro   int
 }
 
-// TODO: consider the stats impact of rank
+// TODO DESIGN: consider the stats impact of rank
 var (
 	classBaseStats = map[string]Stats{
 		"recruit":       Stats{10, 10, 10, 10},

@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: remember to take down game simulator on panic
+// TODO ENGINEER: remember to take down game simulator on panic
 func main() {
 	logger := logrus.New()
 	logger.SetFormatter(&logrus.JSONFormatter{PrettyPrint: true})
@@ -18,7 +18,7 @@ func main() {
 	conf := config.New()
 
 	// spin up connection to database
-	resource, err := database.Connect(conf)
+	resource, err := database.Connect(conf, logger)
 	if err != nil {
 		logger.WithError(err).Fatal("failed database connection")
 	}
