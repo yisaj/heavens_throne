@@ -61,6 +61,10 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 		return p.inputHandler.Quit(ctx, recipientID)
 	case "!toggleupdates":
 		return p.inputHandler.ToggleUpdates(ctx, recipientID)
+	case "!echo":
+		return p.inputHandler.Echo(ctx, recipientID, argument)
+	case "!simulate":
+		return p.inputHandler.Simulate(ctx, recipientID)
 	default:
 		return p.inputHandler.InvalidCommand(ctx, recipientID)
 	}

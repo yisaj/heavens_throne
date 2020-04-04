@@ -104,6 +104,7 @@ type Handler interface {
 	ToggleUpdates(ctx context.Context, recipientID string) error
 	InvalidCommand(ctx context.Context, recipientID string) error
 	Echo(ctx context.Context, recipientID string, msg string) error
+	Simulate(ctx context.Context, recipientID string) error
 }
 
 // A player input handler has to be able to access database resources and respond
@@ -669,6 +670,16 @@ That's not something I understand. Try seeking !help.
 // Echo just sends a message to a player
 func (h *handler) Echo(ctx context.Context, recipientID string, msg string) error {
 	err := h.speaker.SendDM(recipientID, "Just got the message: "+msg)
+	if err != nil {
+		return errors.Wrap(err, "failed sending echo message")
+	}
+	return nil
+}
+
+func (h *handler) Simulate(ctx context.Context, recipientID string) error {
+	// TODO ENGINEER: actually simulate here
+
+	err := h.speaker.SendDM(recipientID, "Attempting to simulate...")
 	if err != nil {
 		return errors.Wrap(err, "failed sending echo message")
 	}

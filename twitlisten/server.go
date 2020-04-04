@@ -22,13 +22,13 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	// check for webhooks id in database
 	webhooksID, err := resource.GetWebhooksID(context.TODO())
 	if err != nil {
-		logger.WithError(err).Fatal("failed querying database for webhook id")
+		logger.WithError(err).Panic("failed querying database for webhook id")
 	}
 
 	// check twitter for webhooks id
 	webhooksID, err = speaker.GetWebhook()
 	if err != nil {
-		logger.WithError(err).Fatal("failed querying twitter for webhook id")
+		logger.WithError(err).Panic("failed querying twitter for webhook id")
 	}
 
 	// autocert manager
@@ -49,7 +49,7 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 		logger.Info("starting autocert challenge server")
 		err := challengeServer.ListenAndServe()
 		if err != nil {
-			logger.WithError(err).Fatal("autocert challenge server died")
+			logger.WithError(err).Panic("autocert challenge server died")
 		}
 	}()
 
@@ -70,7 +70,7 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	}
 	listener, err := tls.Listen("tcp", ":https", tlsConf)
 	if err != nil {
-		logger.WithError(err).Fatal("failed listening on https socket")
+		logger.WithError(err).Panic("failed listening on https socket")
 	}
 
 	if webhooksID != "" {
@@ -78,7 +78,7 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 		go func() {
 			err = speaker.TriggerCRC(webhooksID)
 			if err != nil {
-				logger.WithError(err).Fatal("error while triggering crc")
+				logger.WithError(err).Panic("error while triggering crc")
 			}
 		}()
 	} else {
@@ -86,12 +86,12 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 		go func(handler *handler) {
 			id, err := speaker.RegisterWebhook()
 			if err != nil || id == "" {
-				logger.WithError(err).Fatal("error while registering webhooks url")
+				logger.WithError(err).Panic("error while registering webhooks url")
 			}
 
 			err = resource.SetWebhooksID(context.TODO(), webhooksID)
 			if err != nil {
-				logger.WithError(err).Fatal("error while setting webhooks id in database")
+				logger.WithError(err).Panic("error while setting webhooks id in database")
 			}
 			handler.WebhooksID = webhooksID
 		}(twitterHandler.(*handler))
@@ -101,6 +101,6 @@ func Listen(conf *config.Config, speaker twitspeak.TwitterSpeaker, resource data
 	logger.Info("starting twitter listener")
 	err = server.Serve(listener)
 	if err != nil {
-		logger.WithError(err).Fatal("twitter listener server died")
+		logger.WithError(err).Panic("twitter listener server died")
 	}
 }
