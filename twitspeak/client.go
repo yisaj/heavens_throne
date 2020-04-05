@@ -353,3 +353,33 @@ func (s *speaker) SubscribeUser() error {
 	}
 	return nil
 }
+
+func (s *speaker) Tweet(msg string) {
+	tweetPath := fmt.Sprintf("/statuses/update.json?status=%s", msg)
+	req, err := http.NewRequest("POST", apiPrefix+tweetPath, nil)
+	if err != nil {
+		return errors.Wrap(err, "failed building tweet request")
+	}
+
+	err = s.authorizeRequest(req)
+	if err != nil {
+		return errors.Wrap(err, "failed authorizing tweet request")
+	}
+
+	res, err := s.client.Do(req)
+	if err != nil {
+		return errors.Wrap(err, "failed tweet request")
+	}
+
+	var twitterRes twitterResponse
+	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	if err != nil && err != io.EOF {
+		return errors.Wrap(err, "failed decoding tweet response")
+	}
+
+	err = twitterRes.getErrors()
+	if err != nil {
+		return errors.Wrap(err, "subscribe user response errors")
+	}
+	return nil
+}

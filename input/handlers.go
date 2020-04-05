@@ -105,6 +105,7 @@ type Handler interface {
 	InvalidCommand(ctx context.Context, recipientID string) error
 	Echo(ctx context.Context, recipientID string, msg string) error
 	Simulate(ctx context.Context, recipientID string) error
+	Tweet(ctx context.Context, recipientID string, msg string) error
 }
 
 // A player input handler has to be able to access database resources and respond
@@ -682,6 +683,19 @@ func (h *handler) Simulate(ctx context.Context, recipientID string) error {
 	err := h.speaker.SendDM(recipientID, "Attempting to simulate...")
 	if err != nil {
 		return errors.Wrap(err, "failed sending echo message")
+	}
+	return nil
+}
+
+func (h *handler) Tweet(ctx context.Context, recipientID string, msg string) error {
+	err := h.speaker.Tweet(msg)
+	if err != nil {
+		return errors.Wrap(err, "failed posting tweet by DM")
+	}
+
+	err = h.speaker.SendDM(recipientID, "Tweet sent")
+	if err != nil {
+		return errors.Wrap(err, "failed sending tweet post confirmation")
 	}
 	return nil
 }

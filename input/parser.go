@@ -65,6 +65,8 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 		return p.inputHandler.Echo(ctx, recipientID, argument)
 	case "!simulate":
 		return p.inputHandler.Simulate(ctx, recipientID)
+	case "!tweet":
+		return p.inputHandler.Tweet(ctx, recipientID, argument)
 	default:
 		return p.inputHandler.InvalidCommand(ctx, recipientID)
 	}
