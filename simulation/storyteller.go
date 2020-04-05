@@ -16,9 +16,8 @@ type StoryTeller interface {
 
 // A canary needs to be able to generate and send battle reports
 type canary struct {
-	speaker      twitspeak.TwitterSpeaker
-	resource     database.Resource
-	battleTweets []string
+	speaker  twitspeak.TwitterSpeaker
+	resource database.Resource
 }
 
 // NewStoryTeller constructs a new storyteller
@@ -26,14 +25,17 @@ func NewStoryTeller(speaker twitspeak.TwitterSpeaker, resource database.Resource
 	return &canary{
 		speaker,
 		resource,
-		make([]string, 0),
 	}
 }
 
-func (c *canary) SendBattleUpdates(battleEvent *BattleEvent, combatEvents []*CombatEvent) error {
+func (c *canary) SendNoFightUpdate(players []*entities.Player) error {
 	return nil
 }
 
-func (c *canary) PostMainThread() error {
+func (c *canary) SendCombatUpdates(combatEvents []*CombatEvent) error {
+	return nil
+}
+
+func (c *canary) PostMainThread(battleEvents []*BattleEvent) error {
 	return nil
 }

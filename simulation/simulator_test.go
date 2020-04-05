@@ -16,8 +16,8 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func initializePlayers() []*entities.Player {
-	var players []*entities.Player
+func initializePlayers() map[string][]*entities.Player {
+	players := make(map[string][]*entities.Player)
 
 	numSoldiers := 3
 	var classes = []string{
@@ -34,7 +34,7 @@ func initializePlayers() []*entities.Player {
 	for _, order := range orders {
 		for _, class := range classes {
 			for i := 0; i < numSoldiers; i++ {
-				players = append(players, &entities.Player{
+				players[order] = append(players[order], &entities.Player{
 					ID:           int32(totalPlayers),
 					Class:        class,
 					Rank:         1,
@@ -57,7 +57,7 @@ func TestCalculateAttackOrder(t *testing.T) {
 	for it := attackOrder.Iterator(); it.Next(); {
 		found := false
 		orderedPlayer := it.Value().(*entities.Player)
-		for _, player := range players {
+		for _, player := range players[orderedPlayer.MartialOrder] {
 			if player == orderedPlayer {
 				found = true
 				break

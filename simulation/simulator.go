@@ -142,20 +142,22 @@ func (ns *NormalSimulator) Simulate() error {
 		playersByLocationAndOrder[player.Location][player.MartialOrder] = append(playersByLocationAndOrder[player.Location][player.MartialOrder], &player)
 	}
 
-	battleEvents := make([]*battleEvent, len(playersByLocationAndOrder))
+	battleEvents := make([]*BattleEvent, len(playersByLocationAndOrder))
 	// for each location simulate a battle
 	for locationID, locationPlayers := range playersByLocationAndOrder {
 		// Count how many armies are present
 		numArmies := 0
+		var presentOrder string
 		for order, players := range locationPlayers {
 			if len(players) > 0 {
 				numArmies++
+				presentOrder = order
 			}
 		}
 
 		if numArmies < 2 {
 			// no battle occurs
-			err := ns.storyteller.SendNoFightUpdate(locationPlayers)
+			err := ns.storyteller.SendNoFightUpdate(locationPlayers[presentOrder])
 			if err != nil {
 				return errors.Wrap(err, "failed simulation")
 			}
@@ -228,7 +230,7 @@ func (ns *NormalSimulator) Simulate() error {
 			if err != nil {
 				return errors.Wrap(err, "failed simulation")
 			}
-			battleEvents = append(battleEvents, battleEvent)
+			battleEvents = append(battleEvents, &battleEvent)
 		}
 	}
 
