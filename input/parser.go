@@ -38,25 +38,28 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 	if bangIndex == -1 {
 		return nil
 	}
-	bangString := msg[strings.IndexByte(msg, '!'):] + " "
+	bangString := msg[strings.IndexByte(msg, '!'):]
 	tokenizedCommand := strings.SplitN(bangString, " ", 2)
-	command, argument := tokenizedCommand[0], tokenizedCommand[1]
+	command, argument := tokenizedCommand[0], ""
+	if len(tokenizedCommand) > 1 {
+		argument = tokenizedCommand[1]
+	}
 
 	p.logger.Infof("got command: `%s`, argument: `%s` from `%s`", command, argument, recipientID)
 
-	switch command {
+	switch strings.ToLower(command) {
 	case "!help":
 		return p.inputHandler.Help(ctx, recipientID)
 	case "!status":
 		return p.inputHandler.Status(ctx, recipientID)
 	case "!logistics":
-		return p.inputHandler.Logistics(ctx, recipientID, argument)
+		return p.inputHandler.Logistics(ctx, recipientID, strings.ToLower(argument))
 	case "!join":
-		return p.inputHandler.Join(ctx, recipientID, argument)
+		return p.inputHandler.Join(ctx, recipientID, strings.ToLower(argument))
 	case "!move":
-		return p.inputHandler.Move(ctx, recipientID, argument)
+		return p.inputHandler.Move(ctx, recipientID, strings.ToLower(argument))
 	case "!advance":
-		return p.inputHandler.Advance(ctx, recipientID, argument)
+		return p.inputHandler.Advance(ctx, recipientID, strings.ToLower(argument))
 	case "!quit":
 		return p.inputHandler.Quit(ctx, recipientID)
 	case "!toggleupdates":

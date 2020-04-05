@@ -6,8 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
-	"strings"
 
 	"github.com/yisaj/heavens_throne/config"
 	"github.com/yisaj/heavens_throne/input"
@@ -106,16 +106,17 @@ I'm busy simulating right now.'
 			if recipientID == event.ForUserID {
 				continue
 			}
-
+			// TODO ENGINEER: confirm the locks work the way that I want it to
 			simulating := h.simlock.Check()
 			if simulating {
-				err = h.speaker.SendDM(recipientID, busySimulating)
 				h.simlock.RUnlock()
+				err = h.speaker.SendDM(recipientID, busySimulating)
 				continue
 			}
 
-			msg := strings.ToLower(messageEvent.MessageCreate.MessageData.Text)
+			msg := html.UnescapeString(messageEvent.MessageCreate.MessageData.Text)
 			err = h.dmParser.ParseDM(r.Context(), recipientID, msg)
+			h.simlock.RUnlock()
 			if err != nil {
 				h.logger.WithError(err).Error("failed parsing direct message")
 			}

@@ -142,7 +142,7 @@ func (ns *NormalSimulator) Simulate() error {
 		playersByLocationAndOrder[player.Location][player.MartialOrder] = append(playersByLocationAndOrder[player.Location][player.MartialOrder], &player)
 	}
 
-	battleEvents := make([]*BattleEvent, len(playersByLocationAndOrder))
+	battleEvents := make([]*BattleEvent, 0, len(playersByLocationAndOrder))
 	// for each location simulate a battle
 	for locationID, locationPlayers := range playersByLocationAndOrder {
 		// Count how many armies are present
@@ -353,7 +353,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players map[string][]*
 	// serialize the dead players
 	fatalities := make(map[string][]*entities.Player)
 	for order, dead := range deadPlayers {
-		fatalities[order] = make([]*entities.Player, dead.Len())
+		fatalities[order] = make([]*entities.Player, 0, dead.Len())
 		for iter := dead.Iterator(); iter.Next(); {
 			fatalities[order] = append(fatalities[order], iter.Value().(*entities.Player))
 		}

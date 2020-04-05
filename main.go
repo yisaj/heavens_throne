@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// spin up twitter client
-	speaker := twitspeak.NewSpeaker(conf)
+	speaker := twitspeak.NewSpeaker(conf, logger)
 
 	// spin up game simulation cron task (one execution per day)
 	c := cron.New()

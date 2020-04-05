@@ -9,7 +9,6 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -19,6 +18,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/yisaj/heavens_throne/config"
 )
 
@@ -36,6 +36,7 @@ var (
 type speaker struct {
 	client *http.Client
 	conf   *config.Config
+	logger *logrus.Logger
 }
 
 // TwitterSpeaker contains the methods to send the twitter api HTTPS messages
@@ -45,25 +46,7 @@ type TwitterSpeaker interface {
 	RegisterWebhook() (string, error)
 	SendDM(userID string, msg string) error
 	SubscribeUser() error
-	Tweet(msg string) error
-}
-
-// twitterResponse holds the response for any message sent to twitter
-type twitterResponse struct {
-	Errors []twitterError
-	ID     string
-}
-
-// getErrors parses out all the errors in a twitter api response
-func (tr twitterResponse) getErrors() error {
-	if len(tr.Errors) > 0 {
-		var err error = tr.Errors[0]
-		for _, twitterErr := range tr.Errors[1:] {
-			err = multierror.Append(err, twitterErr)
-		}
-		return err
-	}
-	return nil
+	Tweet(msg string) (string, error)
 }
 
 // twitterError is the standard error format for a twitter api error
@@ -77,8 +60,20 @@ func (te twitterError) Error() string {
 	return fmt.Sprintf("Twitter Err %d: %s", te.Code, te.Message)
 }
 
+// mergeTwitterErrors parses out all the errors in a twitter api response
+func mergeTwitterErrors(te []twitterError) error {
+	if len(te) > 0 {
+		var err error = te[0]
+		for _, twitterErr := range te[1:] {
+			err = multierror.Append(err, twitterErr)
+		}
+		return err
+	}
+	return nil
+}
+
 // NewSpeaker returns a new speaker to send messages to the twitter api with
-func NewSpeaker(conf *config.Config) TwitterSpeaker {
+func NewSpeaker(conf *config.Config, logger *logrus.Logger) TwitterSpeaker {
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
@@ -86,10 +81,29 @@ func NewSpeaker(conf *config.Config) TwitterSpeaker {
 	return &speaker{
 		client,
 		conf,
+		logger,
 	}
 }
 
-//
+func percentEscape(s string) string {
+	result := make([]byte, 0, len(s)*3)
+	for _, b := range []byte(s) {
+		if isPercentEscapable(b) {
+			result = append(result, '%')
+			result = append(result, "0123456789ABCDEF"[b>>4])
+			result = append(result, "0123456789ABCDEF"[b&15])
+		} else {
+			result = append(result, b)
+		}
+	}
+	return string(result)
+}
+
+func isPercentEscapable(b byte) bool {
+	return !('A' <= b && 'Z' >= b || 'a' <= b && 'z' >= b || '0' <= b && '9' >= b || '-' == b || '_' == b || '.' == b || '~' == b)
+}
+
+// generateNonce returns a one time psuedo random string
 func generateNonce(length int) string {
 	nonce := make([]byte, length)
 
@@ -122,61 +136,75 @@ func (s *speaker) authorizeRequest(req *http.Request) error {
 	reqMethod := req.Method
 	reqURL := req.URL.Scheme + "://" + req.URL.Host + req.URL.EscapedPath()
 
-	var params url.Values
+	params := make(map[string]string)
+	// collect body parameters
 	if req.Body != nil {
 		err := req.ParseForm()
 		if err != nil {
 			return errors.Wrap(err, "failed parsing request parameters")
 		}
-		params = req.Form
-	} else {
-		params = req.URL.Query()
+		for key, values := range req.PostForm {
+			if _, ok := params[key]; ok {
+				return errors.New("authorization error: duplicate post form keys")
+			}
+
+			params[key] = values[0]
+		}
 	}
 
-	params.Add("oauth_consumer_key", consumerKey)
-	params.Add("oauth_token", userToken)
-	params.Add("oauth_nonce", nonce)
-	params.Add("oauth_timestamp", timestamp)
-	params.Add("oauth_signature_method", signatureMethod)
-	params.Add("oauth_version", version)
+	// collect url parameters
+	for key, values := range req.URL.Query() {
+		if _, ok := params[key]; ok {
+			return errors.New("authorization error: duplicate url keys")
+		}
+
+		params[key] = values[0]
+	}
+
+	params["oauth_consumer_key"] = consumerKey
+	params["oauth_token"] = userToken
+	params["oauth_signature_method"] = signatureMethod
+	params["oauth_timestamp"] = timestamp
+	params["oauth_nonce"] = nonce
+	params["oauth_version"] = version
 
 	// build the signature field
 	signature := strings.Builder{}
 	signature.WriteString(reqMethod)
 	signature.WriteByte('&')
-	signature.WriteString(url.QueryEscape(reqURL))
+	signature.WriteString(percentEscape(reqURL))
 	signature.WriteByte('&')
 
-	keys := make([]string, 0, len(params))
+	sortedKeys := make([]string, 0, len(params))
 	for key := range params {
-		keys = append(keys, key)
+		sortedKeys = append(sortedKeys, key)
 	}
-	sort.Strings(keys)
+	sort.Strings(sortedKeys)
 
-	paramString := strings.Builder{}
-	for _, key := range keys {
-		values := params[key]
-		paramString.WriteString(key)
-		paramString.WriteByte('=')
-		paramString.WriteString(url.QueryEscape(values[0]))
-		paramString.WriteByte('&')
+	paramBuilder := strings.Builder{}
+	for _, key := range sortedKeys {
+		paramBuilder.WriteString(key)
+		paramBuilder.WriteByte('=')
+		paramBuilder.WriteString(percentEscape(params[key]))
+		paramBuilder.WriteByte('&')
 	}
-	signature.WriteString(url.QueryEscape(strings.TrimSuffix(paramString.String(), "&")))
-	signingKey := url.QueryEscape(s.conf.ConsumerKeySecret) + "&" + url.QueryEscape(s.conf.AccessTokenSecret)
+	paramString := strings.TrimSuffix(paramBuilder.String(), "&")
+
+	signature.WriteString(percentEscape(paramString))
+	signingKey := percentEscape(s.conf.ConsumerKeySecret) + "&" + percentEscape(s.conf.AccessTokenSecret)
 	hash := hmac.New(sha1.New, []byte(signingKey))
 	hash.Write([]byte(signature.String()))
 	hashedSignature := base64.StdEncoding.EncodeToString(hash.Sum(nil))
 
 	// build the authorization header
 	authHeader := strings.Builder{}
-	authHeader.WriteString(fmt.Sprintf("OAuth oauth_consumer_key=\"%s\", ", consumerKey))
-	authHeader.WriteString(fmt.Sprintf("oauth_nonce=\"%s\", ", nonce))
-	authHeader.WriteString(fmt.Sprintf("oauth_signature=\"%s\", ", url.QueryEscape(hashedSignature)))
-	authHeader.WriteString(fmt.Sprintf("oauth_signature_method=\"%s\", ", signatureMethod))
-	authHeader.WriteString(fmt.Sprintf("oauth_timestamp=\"%s\", ", timestamp))
-	authHeader.WriteString(fmt.Sprintf("oauth_token=\"%s\", ", userToken))
-	authHeader.WriteString(fmt.Sprintf("oauth_version=\"%s\"", version))
-
+	authHeader.WriteString(fmt.Sprintf("OAuth oauth_consumer_key=\"%s\",", consumerKey))
+	authHeader.WriteString(fmt.Sprintf("oauth_token=\"%s\",", userToken))
+	authHeader.WriteString(fmt.Sprintf("oauth_signature_method=\"%s\",", signatureMethod))
+	authHeader.WriteString(fmt.Sprintf("oauth_timestamp=\"%s\",", timestamp))
+	authHeader.WriteString(fmt.Sprintf("oauth_nonce=\"%s\",", nonce))
+	authHeader.WriteString(fmt.Sprintf("oauth_version=\"%s\",", version))
+	authHeader.WriteString(fmt.Sprintf("oauth_signature=\"%s\"", percentEscape(hashedSignature)))
 	req.Header.Set("Authorization", authHeader.String())
 	return nil
 }
@@ -201,13 +229,16 @@ func (s *speaker) TriggerCRC(webhookID string) error {
 		return errors.Wrap(err, "failed requesting trigger CRC")
 	}
 
-	var twitterRes twitterResponse
-	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	type triggerCRCResponse struct {
+		Errors []twitterError
+	}
+	var triggerCRCRes triggerCRCResponse
+	err = json.NewDecoder(res.Body).Decode(&triggerCRCRes)
 	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
 
-	err = twitterRes.getErrors()
+	err = mergeTwitterErrors(triggerCRCRes.Errors)
 	if err != nil {
 		return errors.Wrap(err, "trigger CRC response errors")
 	}
@@ -231,6 +262,18 @@ func (s *speaker) GetWebhook() (string, error) {
 	res, err := s.client.Do(req)
 	if err != nil {
 		return "", errors.Wrap(err, "failed requesting get webhook")
+	}
+
+	if res.StatusCode != 200 {
+		type getWebhookResponse struct {
+			Errors []twitterError
+		}
+		var getWebhookRes getWebhookResponse
+		err = json.NewDecoder(res.Body).Decode(&getWebhookRes)
+		if err != nil {
+			return "", errors.Wrap(err, "failed decoding get webhooks twitter errors")
+		}
+		return "", errors.Wrap(mergeTwitterErrors(getWebhookRes.Errors), "get webhooks errors")
 	}
 
 	var webhooks []interface{}
@@ -269,17 +312,21 @@ func (s *speaker) RegisterWebhook() (string, error) {
 		return "", errors.Wrap(err, "failed requesting webhooks registration")
 	}
 
-	var twitterRes twitterResponse
-	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	type regWebhookResponse struct {
+		ID     string
+		Errors []twitterError
+	}
+	var regWebhookRes regWebhookResponse
+	err = json.NewDecoder(res.Body).Decode(&regWebhookRes)
 	if err != nil {
 		return "", errors.Wrap(err, "failed decoding register webhook response")
 	}
 
-	err = twitterRes.getErrors()
+	err = mergeTwitterErrors(regWebhookRes.Errors)
 	if err != nil {
 		return "", errors.Wrap(err, "register webhook response errors")
 	}
-	return twitterRes.ID, nil
+	return regWebhookRes.ID, nil
 }
 
 // SendDM sends a twitter direct message to a given user
@@ -310,13 +357,16 @@ func (s *speaker) SendDM(userID string, msg string) error {
 		return errors.Wrap(err, "failed posting direct message")
 	}
 
-	var twitterRes twitterResponse
-	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	type dmResponse struct {
+		Errors []twitterError
+	}
+	var dmRes dmResponse
+	err = json.NewDecoder(res.Body).Decode(&dmRes)
 	if err != nil {
 		return errors.Wrap(err, "failed decoding post direct message response")
 	}
 
-	err = twitterRes.getErrors()
+	err = mergeTwitterErrors(dmRes.Errors)
 	if err != nil {
 		return errors.Wrap(err, "post direct message response errors")
 	}
@@ -342,45 +392,58 @@ func (s *speaker) SubscribeUser() error {
 		return errors.Wrap(err, "failed requesting user subscription")
 	}
 
-	var twitterRes twitterResponse
-	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	type subscribeResponse struct {
+		Errors []twitterError
+	}
+	var subscribeRes subscribeResponse
+	err = json.NewDecoder(res.Body).Decode(&subscribeRes)
 	if err != nil && err != io.EOF {
 		return errors.Wrap(err, "failed decoding trigger CRC response")
 	}
 
-	err = twitterRes.getErrors()
+	err = mergeTwitterErrors(subscribeRes.Errors)
 	if err != nil {
 		return errors.Wrap(err, "subscribe user response errors")
 	}
 	return nil
 }
 
-func (s *speaker) Tweet(msg string) error {
-	tweetPath := fmt.Sprintf("/statuses/update.json?status=%s", msg)
+func (s *speaker) Tweet(msg string) (string, error) {
+	tweetPath := fmt.Sprintf("/statuses/update.json?status=%s", percentEscape(msg))
+
 	req, err := http.NewRequest("POST", apiPrefix+tweetPath, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed building tweet request")
+		return "", errors.Wrap(err, "failed building tweet request")
 	}
 
 	err = s.authorizeRequest(req)
 	if err != nil {
-		return errors.Wrap(err, "failed authorizing tweet request")
+		return "", errors.Wrap(err, "failed authorizing tweet request")
 	}
 
 	res, err := s.client.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "failed tweet request")
+		return "", errors.Wrap(err, "failed tweet request")
 	}
 
-	var twitterRes twitterResponse
-	err = json.NewDecoder(res.Body).Decode(&twitterRes)
+	type tweetResponse struct {
+		ID_str string
+		Errors []twitterError
+	}
+	var tweetRes tweetResponse
+	err = json.NewDecoder(res.Body).Decode(&tweetRes)
 	if err != nil && err != io.EOF {
-		return errors.Wrap(err, "failed decoding tweet response")
+		return "", errors.Wrap(err, "failed decoding tweet response")
 	}
 
-	err = twitterRes.getErrors()
-	if err != nil {
-		return errors.Wrap(err, "subscribe user response errors")
+	err = mergeTwitterErrors(tweetRes.Errors)
+	if res.StatusCode != 200 {
+		if err != nil {
+			return "", errors.Wrap(err, "send tweet response errors")
+		} else {
+			return "", fmt.Errorf("send tweet twitter response with code: %d", res.StatusCode)
+		}
 	}
-	return nil
+
+	return tweetRes.ID_str, nil
 }

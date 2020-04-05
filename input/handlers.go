@@ -688,12 +688,12 @@ func (h *handler) Simulate(ctx context.Context, recipientID string) error {
 }
 
 func (h *handler) Tweet(ctx context.Context, recipientID string, msg string) error {
-	err := h.speaker.Tweet(msg)
+	tweetID, err := h.speaker.Tweet(msg)
 	if err != nil {
 		return errors.Wrap(err, "failed posting tweet by DM")
 	}
 
-	err = h.speaker.SendDM(recipientID, "Tweet sent")
+	err = h.speaker.SendDM(recipientID, fmt.Sprintf("Sent tweet with ID: %s", tweetID))
 	if err != nil {
 		return errors.Wrap(err, "failed sending tweet post confirmation")
 	}
