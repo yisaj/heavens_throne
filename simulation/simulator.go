@@ -137,80 +137,108 @@ func (ns *NormalSimulator) Simulate() error {
 	}
 
 	// process all players into a map grouped by location
-	playersByLocation := make(map[int32][]*entities.Player)
+	playersByLocationAndOrder := make(map[int32]map[string][]*entities.Player)
 	for _, player := range players {
-		playersByLocation[player.Location] = append(playersByLocation[player.Location], &player)
+		playersByLocationAndOrder[player.Location][player.MartialOrder] = append(playersByLocationAndOrder[player.Location][player.MartialOrder], &player)
 	}
 
+	battleEvents := make([]*battleEvent, len(playersByLocationAndOrder))
 	// for each location simulate a battle
-	for locationID, players := range playersByLocation {
-		// TODO ENGINEER: handle locations with no enemy combatants
-		survivors, fatalities, combatEvents, err := ns.SimulateBattle(locationID, players)
-		if err != nil {
-			return errors.Wrap(err, "failed simulation")
+	for locationID, locationPlayers := range playersByLocationAndOrder {
+		// Count how many armies are present
+		numArmies := 0
+		for order, players := range locationPlayers {
+			if len(players) > 0 {
+				numArmies++
+			}
 		}
 
-		// kill all dead players in the database
-		for _, dead := range fatalities {
-			for _, fatality := range dead {
-				err := ns.resource.KillPlayer(context.TODO(), fatality.TwitterID)
+		if numArmies < 2 {
+			// no battle occurs
+			err := ns.storyteller.SendNoFightUpdate(locationPlayers)
+			if err != nil {
+				return errors.Wrap(err, "failed simulation")
+			}
+
+		} else {
+			// battle occurs
+			survivors, fatalities, combatEvents, err := ns.SimulateBattle(locationID, locationPlayers)
+			if err != nil {
+				return errors.Wrap(err, "failed simulation")
+			}
+
+			// kill all dead players in the database
+			for _, dead := range fatalities {
+				for _, fatality := range dead {
+					err := ns.resource.KillPlayer(context.TODO(), fatality.TwitterID)
+					if err != nil {
+						return errors.Wrap(err, "failed simulation")
+					}
+				}
+			}
+
+			// dole out player experience
+			for _, event := range combatEvents {
+				ns.giveCombatExperience(event)
+			}
+
+			// check if ownership of the location has changed
+			var occupier string
+			var max int
+			for order, array := range survivors {
+				if len(array) > max {
+					occupier = order
+					max = len(array)
+				}
+			}
+
+			location, err := ns.resource.GetLocation(context.TODO(), locationID)
+			if err != nil {
+				return errors.Wrap(err, "failed simulation")
+			}
+
+			deltaLocation := *location
+			if !location.Occupier.Valid || (location.Occupier.String == occupier) {
+				// location ownership should change
+				deltaLocation.Owner.String = occupier
+				err = ns.resource.SetLocationOwner(context.TODO(), location.ID, occupier)
 				if err != nil {
 					return errors.Wrap(err, "failed simulation")
 				}
 			}
-		}
+			location.Occupier.String = occupier
 
-		// dole out player experience
-		for _, event := range combatEvents {
-			ns.giveCombatExperience(event)
-		}
-
-		// check if ownership of the location has changed
-		var occupier string
-		var max int
-		for order, array := range survivors {
-			if len(array) > max {
-				occupier = order
-				max = len(array)
+			battleEvent := BattleEvent{
+				survivors:      survivors,
+				fatalities:     fatalities,
+				locationBefore: *location,
+				locationAfter:  deltaLocation,
 			}
-		}
 
-		location, err := ns.resource.GetLocation(context.TODO(), locationID)
-		if err != nil {
-			return errors.Wrap(err, "failed simulation")
-		}
+			// Change the location owner to the new owner
+			if location.Owner.String != deltaLocation.Owner.String {
+				err = ns.resource.SetLocationOwner(context.TODO(), locationID, occupier)
+				if err != nil {
+					return errors.Wrap(err, "failed simulation")
+				}
+			}
 
-		deltaLocation := *location
-		if !location.Occupier.Valid || (location.Occupier.String == occupier) {
-			// location ownership should change
-			deltaLocation.Owner.String = occupier
-			err = ns.resource.SetLocationOwner(context.TODO(), location.ID, occupier)
+			// send out storyteller individual tweets and save battle tweets
+			err = ns.storyteller.SendCombatUpdates(combatEvents)
 			if err != nil {
 				return errors.Wrap(err, "failed simulation")
 			}
-		}
-		location.Occupier.String = occupier
-
-		battleEvent := BattleEvent{
-			survivors:      survivors,
-			fatalities:     fatalities,
-			locationBefore: *location,
-			locationAfter:  deltaLocation,
-		}
-		// send out storyteller individual tweets and save battle tweets
-		err = ns.storyteller.SendBattleUpdates(&battleEvent, combatEvents)
-		if err != nil {
-			return errors.Wrap(err, "failed simulation")
+			battleEvents = append(battleEvents, battleEvent)
 		}
 	}
 
 	// tweet new map state and battle tweets
-	err = ns.storyteller.PostMainThread()
+	err = ns.storyteller.PostMainThread(battleEvents)
 	if err != nil {
 		return errors.Wrap(err, "failed simulation")
 	}
 
-	// check if game is over
+	// TODO ENGINEER: check if game is over
 
 	ns.lock.WUnlock()
 	return nil
@@ -232,16 +260,16 @@ func (ns *NormalSimulator) giveCombatExperience(event *CombatEvent) {
 }
 
 // SimulateBattle simulates a battle at a single location
-func (ns *NormalSimulator) SimulateBattle(location int32, players []*entities.Player) (map[string][]*entities.Player, map[string][]*entities.Player, []*CombatEvent, error) {
+func (ns *NormalSimulator) SimulateBattle(location int32, players map[string][]*entities.Player) (map[string][]*entities.Player, map[string][]*entities.Player, []*CombatEvent, error) {
 	deadPlayers := map[string]*bst.Map{
 		"Staghorn Sect": bst.NewMap(10),
 		"Order Gorgona": bst.NewMap(10),
 		"The Baaturate": bst.NewMap(10),
 	}
-	combatEvents := make([]*CombatEvent, 0, len(players))
 
 	// calculate attack order
 	livingPlayers := ns.calculateAttackOrder(players)
+	combatEvents := make([]*CombatEvent, 0, livingPlayers.Len())
 
 	// calculate total aggros
 	totalAggros, medicPowers := ns.calculateTotalAggros(livingPlayers)
@@ -451,16 +479,18 @@ func (ns *NormalSimulator) reviveTarget(player *entities.Player, deadPlayers map
 	return &CombatEvent{nil, player, Revive, NoTarget}
 }
 
-func (ns *NormalSimulator) calculateAttackOrder(players []*entities.Player) *bst.Map {
+func (ns *NormalSimulator) calculateAttackOrder(players map[string][]*entities.Player) *bst.Map {
 	attackOrder := bst.NewMap(len(players))
-	for _, player := range players {
-		playerStats := player.GetStats()
-		for {
-			// initiative is negated, since the map sorts in ascending order
-			initiative := bst.Float64(-(rand.NormFloat64()*speedStdDev + float64(playerStats.Speed)))
-			if !attackOrder.Exists(initiative) {
-				attackOrder.Add(initiative, player)
-				break
+	for order := range players {
+		for _, player := range players[order] {
+			playerStats := player.GetStats()
+			for {
+				// initiative is negated, since the map sorts in ascending order
+				initiative := bst.Float64(-(rand.NormFloat64()*speedStdDev + float64(playerStats.Speed)))
+				if !attackOrder.Exists(initiative) {
+					attackOrder.Add(initiative, player)
+					break
+				}
 			}
 		}
 	}

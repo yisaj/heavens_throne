@@ -2,14 +2,16 @@ package simulation
 
 import (
 	"github.com/yisaj/heavens_throne/database"
+	"github.com/yisaj/heavens_throne/entities"
 	"github.com/yisaj/heavens_throne/twitspeak"
 )
 
 // StoryTeller contains the logic to generate combat/battle reports and send them
 // to the player
 type StoryTeller interface {
-	SendBattleUpdates(battleEvent *BattleEvent, combatEvents []*CombatEvent) error
-	PostMainThread() error
+	SendNoFightUpdate(players []*entities.Player) error
+	SendCombatUpdates(combatEvents []*CombatEvent) error
+	PostMainThread(battleEvents []*BattleEvent) error
 }
 
 // A canary needs to be able to generate and send battle reports
