@@ -45,6 +45,7 @@ type TwitterSpeaker interface {
 	RegisterWebhook() (string, error)
 	SendDM(userID string, msg string) error
 	SubscribeUser() error
+	Tweet(msg string) error
 }
 
 // twitterResponse holds the response for any message sent to twitter
@@ -354,7 +355,7 @@ func (s *speaker) SubscribeUser() error {
 	return nil
 }
 
-func (s *speaker) Tweet(msg string) {
+func (s *speaker) Tweet(msg string) error {
 	tweetPath := fmt.Sprintf("/statuses/update.json?status=%s", msg)
 	req, err := http.NewRequest("POST", apiPrefix+tweetPath, nil)
 	if err != nil {
