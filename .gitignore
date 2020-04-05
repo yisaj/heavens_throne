@@ -16,3 +16,6 @@
 pkg/
 heavens_throne
 .env
+
+# Logging
+*.log
