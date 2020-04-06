@@ -49,26 +49,37 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 
 	switch strings.ToLower(command) {
 	case "!help":
+	case "help":
 		return p.inputHandler.Help(ctx, recipientID)
 	case "!status":
+	case "status":
 		return p.inputHandler.Status(ctx, recipientID)
 	case "!logistics":
+	case "logistics":
 		return p.inputHandler.Logistics(ctx, recipientID, strings.ToLower(argument))
 	case "!join":
+	case "join":
 		return p.inputHandler.Join(ctx, recipientID, strings.ToLower(argument))
 	case "!move":
+	case "move":
 		return p.inputHandler.Move(ctx, recipientID, strings.ToLower(argument))
 	case "!advance":
+	case "advance":
 		return p.inputHandler.Advance(ctx, recipientID, strings.ToLower(argument))
 	case "!quit":
+	case "quit":
 		return p.inputHandler.Quit(ctx, recipientID)
 	case "!toggleupdates":
+	case "toggleupdates":
 		return p.inputHandler.ToggleUpdates(ctx, recipientID)
 	case "!echo":
+	case "echo":
 		return p.inputHandler.Echo(ctx, recipientID, argument)
 	case "!simulate":
+	case "simulate":
 		return p.inputHandler.Simulate(ctx, recipientID)
 	case "!tweet":
+	case "tweet":
 		return p.inputHandler.Tweet(ctx, recipientID, argument)
 	default:
 		return p.inputHandler.InvalidCommand(ctx, recipientID)
