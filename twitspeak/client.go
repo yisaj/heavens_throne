@@ -46,7 +46,7 @@ type TwitterSpeaker interface {
 	RegisterWebhook() (string, error)
 	SendDM(userID string, msg string) error
 	SubscribeUser() error
-	Tweet(msg string) (string, error)
+	Tweet(msg string, target string) (string, error)
 }
 
 // twitterError is the standard error format for a twitter api error
@@ -408,8 +408,11 @@ func (s *speaker) SubscribeUser() error {
 	return nil
 }
 
-func (s *speaker) Tweet(msg string) (string, error) {
+func (s *speaker) Tweet(msg string, target string) (string, error) {
 	tweetPath := fmt.Sprintf("/statuses/update.json?status=%s", percentEscape(msg))
+	if target != "" {
+		tweetPath += fmt.Sprintf("&in_reply_to_status_id=%s", target)
+	}
 
 	req, err := http.NewRequest("POST", apiPrefix+tweetPath, nil)
 	if err != nil {

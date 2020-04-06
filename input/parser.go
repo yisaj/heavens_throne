@@ -48,50 +48,30 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 	p.logger.Infof("got command: `%s`, argument: `%s` from `%s`", command, argument, recipientID)
 
 	switch strings.ToLower(command) {
-	case "!help":
-		fallthrough
-	case "help":
+	case "!help", "help":
 		return p.inputHandler.Help(ctx, recipientID)
-	case "!status":
-		fallthrough
-	case "status":
+	case "!status", "status":
 		return p.inputHandler.Status(ctx, recipientID)
-	case "!logistics":
-		fallthrough
-	case "logistics":
+	case "!logistics", "logistics":
 		return p.inputHandler.Logistics(ctx, recipientID, strings.ToLower(argument))
-	case "!join":
-		fallthrough
-	case "join":
+	case "!join", "join":
 		return p.inputHandler.Join(ctx, recipientID, strings.ToLower(argument))
-	case "!move":
-		fallthrough
-	case "move":
+	case "!move", "move":
 		return p.inputHandler.Move(ctx, recipientID, strings.ToLower(argument))
-	case "!advance":
-		fallthrough
-	case "advance":
+	case "!advance", "advance":
 		return p.inputHandler.Advance(ctx, recipientID, strings.ToLower(argument))
-	case "!quit":
-		fallthrough
-	case "quit":
+	case "!quit", "quit":
 		return p.inputHandler.Quit(ctx, recipientID)
-	case "!toggleupdates":
-		fallthrough
-	case "toggleupdates":
+	case "!toggleupdates", "toggleupdates":
 		return p.inputHandler.ToggleUpdates(ctx, recipientID)
-	case "!echo":
-		fallthrough
-	case "echo":
+	case "!echo", "echo":
 		return p.inputHandler.Echo(ctx, recipientID, argument)
-	case "!simulate":
-		fallthrough
-	case "simulate":
+	case "!simulate", "simulate":
 		return p.inputHandler.Simulate(ctx, recipientID)
-	case "!tweet":
-		fallthrough
-	case "tweet":
+	case "!tweet", "tweet":
 		return p.inputHandler.Tweet(ctx, recipientID, argument)
+	case "!reply", "reply":
+		return p.inputHandler.Reply(ctx, recipientID, argument)
 	default:
 		return p.inputHandler.InvalidCommand(ctx, recipientID)
 	}

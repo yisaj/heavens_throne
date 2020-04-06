@@ -106,6 +106,7 @@ type Handler interface {
 	Echo(ctx context.Context, recipientID string, msg string) error
 	Simulate(ctx context.Context, recipientID string) error
 	Tweet(ctx context.Context, recipientID string, msg string) error
+	Reply(ctx context.Context, recipientID string, argument string) error
 }
 
 // A player input handler has to be able to access database resources and respond
@@ -688,7 +689,7 @@ func (h *handler) Simulate(ctx context.Context, recipientID string) error {
 }
 
 func (h *handler) Tweet(ctx context.Context, recipientID string, msg string) error {
-	tweetID, err := h.speaker.Tweet(msg)
+	tweetID, err := h.speaker.Tweet(msg, "")
 	if err != nil {
 		return errors.Wrap(err, "failed posting tweet by DM")
 	}
@@ -696,6 +697,28 @@ func (h *handler) Tweet(ctx context.Context, recipientID string, msg string) err
 	err = h.speaker.SendDM(recipientID, fmt.Sprintf("Sent tweet with ID: %s", tweetID))
 	if err != nil {
 		return errors.Wrap(err, "failed sending tweet post confirmation")
+	}
+	return nil
+}
+
+func (h *handler) Reply(ctx context.Context, recipientID string, argument string) error {
+	args := strings.SplitN(argument, " ", 2)
+	if len(args) < 2 {
+		err := h.speaker.SendDM(recipientID, fmt.Sprintf("No tweet ID/message was supplied. Got: %s", argument))
+		if err != nil {
+			return errors.Wrap(err, "failed sending reply error message")
+		}
+		return nil
+	}
+
+	tweetID, err := h.speaker.Tweet(args[1], args[0])
+	if err != nil {
+		return errors.Wrap(err, "failed posting tweet reply")
+	}
+
+	err = h.speaker.SendDM(recipientID, fmt.Sprintf("Replied to tweet %s with %s", args[0], tweetID))
+	if err != nil {
+		return errors.Wrap(err, "failed sending tweet reply confirmation")
 	}
 	return nil
 }
