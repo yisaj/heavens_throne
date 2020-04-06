@@ -36,9 +36,9 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 	// look for command and tokenize the message
 	bangIndex := strings.IndexByte(msg, '!')
 	if bangIndex == -1 {
-		return nil
+		bangIndex = 0
 	}
-	bangString := msg[strings.IndexByte(msg, '!'):]
+	bangString := msg[bangIndex:]
 	tokenizedCommand := strings.SplitN(bangString, " ", 2)
 	command, argument := tokenizedCommand[0], ""
 	if len(tokenizedCommand) > 1 {
