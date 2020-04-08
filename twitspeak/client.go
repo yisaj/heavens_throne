@@ -298,6 +298,7 @@ func (s *speaker) RegisterWebhook() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed building webhooks registration request")
 	}
+
 	query := req.URL.Query()
 	query.Add("url", webhookURL)
 	req.URL.RawQuery = query.Encode()
@@ -346,6 +347,8 @@ func (s *speaker) SendDM(userID string, msg string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed building post direct message request")
 	}
+
+	req.Header.Add("Content-Type", "application/json")
 
 	err = s.authorizeRequest(req)
 	if err != nil {
@@ -409,15 +412,19 @@ func (s *speaker) SubscribeUser() error {
 }
 
 func (s *speaker) Tweet(msg string, target string) (string, error) {
-	tweetPath := fmt.Sprintf("/statuses/update.json?status=%s", percentEscape(msg))
-	if target != "" {
-		tweetPath += fmt.Sprintf("&in_reply_to_status_id=%s", target)
-	}
+	tweetPath := "/statuses/update.json"
 
 	req, err := http.NewRequest("POST", apiPrefix+tweetPath, nil)
 	if err != nil {
 		return "", errors.Wrap(err, "failed building tweet request")
 	}
+
+	params := req.URL.Query()
+	params.Add("status", msg)
+	if target != "" {
+		params.Add("in_reply_to_status_id", target)
+	}
+	req.URL.RawQuery = params.Encode()
 
 	err = s.authorizeRequest(req)
 	if err != nil {
