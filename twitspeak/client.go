@@ -1,6 +1,7 @@
 package twitspeak
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
@@ -8,7 +9,9 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -23,10 +26,11 @@ import (
 )
 
 const (
-	apiPrefix  = "https://api.twitter.com/1.1"
-	nonceRunes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-	nonceMax   = 6
-	nonceMask  = 1<<uint(nonceMax) - 1
+	apiPrefix    = "https://api.twitter.com/1.1"
+	uploadPrefix = "https://upload.twitter.com/1.1"
+	nonceRunes   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+	nonceMax     = 6
+	nonceMask    = 1<<uint(nonceMax) - 1
 )
 
 var (
@@ -46,7 +50,8 @@ type TwitterSpeaker interface {
 	RegisterWebhook() (string, error)
 	SendDM(userID string, msg string) error
 	SubscribeUser() error
-	Tweet(msg string, target string) (string, error)
+	Tweet(msg string, target string, mediaID string) (string, error)
+	UploadPNG(filename string) (string, error)
 }
 
 // twitterError is the standard error format for a twitter api error
@@ -264,7 +269,7 @@ func (s *speaker) GetWebhook() (string, error) {
 		return "", errors.Wrap(err, "failed requesting get webhook")
 	}
 
-	if res.StatusCode != 200 {
+	if res.StatusCode/100 != 2 {
 		type getWebhookResponse struct {
 			Errors []twitterError
 		}
@@ -300,7 +305,7 @@ func (s *speaker) RegisterWebhook() (string, error) {
 	}
 
 	query := req.URL.Query()
-	query.Add("url", webhookURL)
+	query.Set("url", webhookURL)
 	req.URL.RawQuery = query.Encode()
 
 	err = s.authorizeRequest(req)
@@ -348,7 +353,7 @@ func (s *speaker) SendDM(userID string, msg string) error {
 		return errors.Wrap(err, "failed building post direct message request")
 	}
 
-	req.Header.Add("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json")
 
 	err = s.authorizeRequest(req)
 	if err != nil {
@@ -411,7 +416,7 @@ func (s *speaker) SubscribeUser() error {
 	return nil
 }
 
-func (s *speaker) Tweet(msg string, target string) (string, error) {
+func (s *speaker) Tweet(msg string, target string, mediaID string) (string, error) {
 	tweetPath := "/statuses/update.json"
 
 	req, err := http.NewRequest("POST", apiPrefix+tweetPath, nil)
@@ -420,9 +425,12 @@ func (s *speaker) Tweet(msg string, target string) (string, error) {
 	}
 
 	params := req.URL.Query()
-	params.Add("status", msg)
+	params.Set("status", msg)
 	if target != "" {
-		params.Add("in_reply_to_status_id", target)
+		params.Set("in_reply_to_status_id", target)
+	}
+	if mediaID != "" {
+		params.Set("media_ids", mediaID)
 	}
 	req.URL.RawQuery = params.Encode()
 
@@ -437,7 +445,7 @@ func (s *speaker) Tweet(msg string, target string) (string, error) {
 	}
 
 	type tweetResponse struct {
-		ID_str string
+		ID_Str string
 		Errors []twitterError
 	}
 	var tweetRes tweetResponse
@@ -447,7 +455,7 @@ func (s *speaker) Tweet(msg string, target string) (string, error) {
 	}
 
 	err = mergeTwitterErrors(tweetRes.Errors)
-	if res.StatusCode != 200 {
+	if res.StatusCode/100 != 2 {
 		if err != nil {
 			return "", errors.Wrap(err, "send tweet response errors")
 		} else {
@@ -455,5 +463,243 @@ func (s *speaker) Tweet(msg string, target string) (string, error) {
 		}
 	}
 
-	return tweetRes.ID_str, nil
+	return tweetRes.ID_Str, nil
+}
+
+func (s *speaker) UploadPNG(filename string) (string, error) {
+	// open file
+	file, err := os.Open(filename)
+	if err != nil {
+		return "", errors.Wrap(err, "failed opening png file")
+	}
+	defer file.Close()
+
+	fileStat, err := file.Stat()
+	if err != nil {
+		return "", errors.Wrap(err, "failed statting png file")
+	}
+
+	// INIT
+	uploadPath := "/media/upload.json"
+	req, err := http.NewRequest("POST", uploadPrefix+uploadPath, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "failed building init png upload request")
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	params := req.URL.Query()
+	params.Set("command", "INIT")
+	params.Set("total_bytes", strconv.FormatInt(fileStat.Size(), 10))
+	params.Set("media_type", "image/png")
+	req.URL.RawQuery = params.Encode()
+
+	err = s.authorizeRequest(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed authorizing upload png request")
+	}
+
+	res, err := s.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed upload png request")
+	}
+
+	type initResponse struct {
+		Media_ID_String string
+		Errors          []twitterError
+	}
+	var initRes initResponse
+	err = json.NewDecoder(res.Body).Decode(&initRes)
+	if err != nil {
+		return "", errors.Wrap(err, "failed decoding init png upload response")
+	}
+
+	if res.StatusCode/100 != 2 {
+		err = mergeTwitterErrors(initRes.Errors)
+		if err != nil {
+			return "", errors.Wrap(err, "init png upload twitter errors")
+		}
+		return "", fmt.Errorf("init png upload response with code: %d", res.StatusCode)
+	}
+
+	mediaID := initRes.Media_ID_String
+
+	// APPEND
+	// read file
+	type appendResponse struct {
+		Errors []twitterError
+	}
+	const chunkSize int64 = 1024 * 1024
+	segment := 0
+	buf := &bytes.Buffer{}
+	form := multipart.NewWriter(buf)
+	for {
+		part, err := form.CreateFormFile("media", fileStat.Name())
+		if err != nil {
+			return "", errors.Wrap(err, "failed creating upload png form file")
+		}
+
+		bytesRead, err := io.CopyN(part, file, chunkSize)
+		if bytesRead <= 0 || (err != nil && err != io.EOF) {
+			break
+		}
+
+		form.WriteField("command", "APPEND")
+		form.WriteField("media_id", mediaID)
+		form.WriteField("segment_index", strconv.Itoa(segment))
+
+		form.Close()
+
+		req, err = http.NewRequest("POST", uploadPrefix+uploadPath, buf)
+		if err != nil {
+			return "", errors.Wrap(err, "failed building upload png append request")
+		}
+
+		req.Header.Set("Content-Type", "multipart/form-data; boundary="+form.Boundary())
+
+		/*
+			params = req.URL.Query()
+			params.Set("command", "APPEND")
+			params.Set("media_id", mediaID)
+			params.Set("segment_index", strconv.Itoa(segment))
+			req.URL.RawQuery = params.Encode()
+		*/
+
+		err = s.authorizeRequest(req)
+		if err != nil {
+			return "", errors.Wrap(err, "failed authorizing upload png append request")
+		}
+
+		res, err := s.client.Do(req)
+		if err != nil {
+			return "", errors.Wrap(err, "failed upload png append request")
+		}
+
+		if res.StatusCode/100 != 2 {
+			var appendRes appendResponse
+			err = json.NewDecoder(res.Body).Decode(&appendRes)
+			if err != nil {
+				return "", errors.Wrap(err, "failed decoding upload png append response")
+			}
+
+			err = mergeTwitterErrors(appendRes.Errors)
+			if err != nil {
+				return "", errors.Wrap(err, "upload png append twitter errors")
+			}
+			return "", fmt.Errorf("failed upload png append response with code: %d", res.StatusCode)
+		}
+
+		segment++
+		buf.Reset()
+		form = multipart.NewWriter(buf)
+	}
+
+	if err != nil && err != io.EOF {
+		return "", errors.Wrap(err, "png file read failed")
+	}
+
+	// FINALIZE
+	req, err = http.NewRequest("POST", uploadPrefix+uploadPath, nil)
+	if err != nil {
+		return "", errors.Wrap(err, "failed building upload png finalize request")
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	params = req.URL.Query()
+	params.Set("command", "FINALIZE")
+	params.Set("media_id", mediaID)
+	req.URL.RawQuery = params.Encode()
+
+	err = s.authorizeRequest(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed authorizing upload png finalize request")
+	}
+
+	res, err = s.client.Do(req)
+	if err != nil {
+		return "", errors.Wrap(err, "failed upload png finalize request")
+	}
+
+	type finalizeResponse struct {
+		Processing_Info struct {
+			State            string
+			Check_After_Secs int
+		}
+		Errors []twitterError
+	}
+	var finalizeRes finalizeResponse
+	err = json.NewDecoder(res.Body).Decode(&finalizeRes)
+	if err != nil {
+		return "", errors.Wrap(err, "failed decoding upload png finalize response")
+	}
+
+	if res.StatusCode/100 != 2 {
+		err = mergeTwitterErrors(finalizeRes.Errors)
+		if err != nil {
+			return "", errors.Wrap(err, "upload png finalize twitter errors")
+		}
+		return "", fmt.Errorf("failed upload png finalize response with code: %d", res.StatusCode)
+	}
+
+	if finalizeRes.Processing_Info.State != "" {
+		time.Sleep(time.Second * time.Duration(finalizeRes.Processing_Info.Check_After_Secs))
+
+		for {
+			// STATUS
+			req, err = http.NewRequest("GET", uploadPrefix+uploadPath, nil)
+			if err != nil {
+				return "", errors.Wrap(err, "failed building upload png status request")
+			}
+
+			params = req.URL.Query()
+			params.Set("command", "STATUS")
+			params.Set("media_id", mediaID)
+			req.URL.RawQuery = params.Encode()
+
+			err = s.authorizeRequest(req)
+			if err != nil {
+				return "", errors.Wrap(err, "failed authorizing upload png status request")
+			}
+
+			res, err = s.client.Do(req)
+			if err != nil {
+				return "", errors.Wrap(err, "failed upload png status request")
+			}
+
+			type statusResponse struct {
+				Processing_Info struct {
+					State            string
+					Check_After_Secs int
+					Error            twitterError
+				}
+				Errors []twitterError
+			}
+			var statusRes statusResponse
+			err = json.NewDecoder(res.Body).Decode(&statusRes)
+			if err != nil {
+				return "", errors.Wrap(err, "failed decoding upload png status response")
+			}
+
+			if res.StatusCode/100 != 2 {
+				err = mergeTwitterErrors(statusRes.Errors)
+				if err != nil {
+					return "", errors.Wrap(err, "upload png status response twitter errors")
+				}
+				return "", fmt.Errorf("failed upload png status response with code: %d", res.StatusCode)
+			}
+
+			switch statusRes.Processing_Info.State {
+			case "pending", "in_progress":
+				time.Sleep(time.Second * time.Duration(statusRes.Processing_Info.Check_After_Secs))
+			case "succeeded":
+				break
+			case "failed":
+				return "", errors.Wrap(statusRes.Processing_Info.Error, "png upload failed in status")
+			}
+
+		}
+	}
+
+	return mediaID, nil
 }

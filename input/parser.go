@@ -72,6 +72,8 @@ func (p *parser) ParseDM(ctx context.Context, recipientID string, msg string) er
 		return p.inputHandler.Tweet(ctx, recipientID, argument)
 	case "!reply", "reply":
 		return p.inputHandler.Reply(ctx, recipientID, argument)
+	case "!image", "image":
+		return p.inputHandler.ImageTweet(ctx, recipientID, argument)
 	default:
 		return p.inputHandler.InvalidCommand(ctx, recipientID)
 	}

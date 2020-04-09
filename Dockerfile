@@ -28,6 +28,7 @@ RUN mkdir /app
 WORKDIR /app
 
 COPY migrations migrations
+COPY testcard.png testcard.png
 COPY --from=build /app/heavens_throne heavens_throne
 
 EXPOSE 80

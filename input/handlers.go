@@ -107,6 +107,7 @@ type Handler interface {
 	Simulate(ctx context.Context, recipientID string) error
 	Tweet(ctx context.Context, recipientID string, msg string) error
 	Reply(ctx context.Context, recipientID string, argument string) error
+	ImageTweet(ctx context.Context, recipientID string, filename string) error
 }
 
 // A player input handler has to be able to access database resources and respond
@@ -689,7 +690,7 @@ func (h *handler) Simulate(ctx context.Context, recipientID string) error {
 }
 
 func (h *handler) Tweet(ctx context.Context, recipientID string, msg string) error {
-	tweetID, err := h.speaker.Tweet(msg, "")
+	tweetID, err := h.speaker.Tweet(msg, "", "")
 	if err != nil {
 		return errors.Wrap(err, "failed posting tweet by DM")
 	}
@@ -711,7 +712,7 @@ func (h *handler) Reply(ctx context.Context, recipientID string, argument string
 		return nil
 	}
 
-	tweetID, err := h.speaker.Tweet(args[1], args[0])
+	tweetID, err := h.speaker.Tweet(args[1], args[0], "")
 	if err != nil {
 		return errors.Wrap(err, "failed posting tweet reply")
 	}
@@ -719,6 +720,24 @@ func (h *handler) Reply(ctx context.Context, recipientID string, argument string
 	err = h.speaker.SendDM(recipientID, fmt.Sprintf("Replied to tweet %s with %s", args[0], tweetID))
 	if err != nil {
 		return errors.Wrap(err, "failed sending tweet reply confirmation")
+	}
+	return nil
+}
+
+func (h *handler) ImageTweet(ctx context.Context, recipientID string, filename string) error {
+	imageID, err := h.speaker.UploadPNG(filename)
+	if err != nil {
+		return errors.Wrap(err, "failed uploading image for tweet")
+	}
+
+	tweetID, err := h.speaker.Tweet("Image", "", imageID)
+	if err != nil {
+		return errors.Wrap(err, "failed tweeting image tweet")
+	}
+
+	err = h.speaker.SendDM(recipientID, fmt.Sprintf("Posted image tweet %s", tweetID))
+	if err != nil {
+		return errors.Wrap(err, "failed sending image tweet confirmation")
 	}
 	return nil
 }
