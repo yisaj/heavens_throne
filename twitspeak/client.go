@@ -525,7 +525,6 @@ func (s *speaker) UploadPNG(filename string) (string, error) {
 	mediaID := initRes.Media_ID_String
 
 	// APPEND
-	// read file
 	type appendResponse struct {
 		Errors []twitterError
 	}

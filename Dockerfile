@@ -23,6 +23,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
 
 # run the app
 FROM alpine
+RUN apk --no-cache add inkscape
 RUN apk --no-cache add ca-certificates
 RUN mkdir /app
 WORKDIR /app
