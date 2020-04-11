@@ -16,11 +16,13 @@ type PlayerResource interface {
 	DeactivatePlayer(ctx context.Context, twitterID string) error
 	ClearPlayers(ctx context.Context) error
 	DeletePlayer(ctx context.Context, twitterID string) error
-	MovePlayer(ctx context.Context, twitterID string, destination int32) error
+	UpdatePlayerDestination(ctx context.Context, twitterID string, destination int32) error
+	MovePlayers(ctx context.Context) error
 	TogglePlayerUpdates(ctx context.Context, twitterID string) (bool, error)
 	AdvancePlayer(ctx context.Context, twitterID string, class string, rank int16) error
 	GetAllPlayers(ctx context.Context) ([]entities.Player, error)
 	KillPlayer(ctx context.Context, twitterID string) error
+	RevivePlayers(ctx context.Context) error
 }
 
 func (c *connection) CreatePlayer(ctx context.Context, twitterID string, martialOrder string, location int32) (*entities.Player, error) {
@@ -80,12 +82,22 @@ func (c *connection) DeletePlayer(ctx context.Context, twitterID string) error {
 	return nil
 }
 
-func (c *connection) MovePlayer(ctx context.Context, twitterID string, destination int32) error {
+func (c *connection) UpdatePlayerDestination(ctx context.Context, twitterID string, destination int32) error {
 	query := `UPDATE player SET next_location=$1 WHERE twitter_id=$2`
 
 	_, err := c.db.ExecContext(ctx, query, destination, twitterID)
 	if err != nil {
-		return errors.Wrap(err, "failed updating player location")
+		return errors.Wrap(err, "failed updating player next location")
+	}
+	return nil
+}
+
+func (c *connection) MovePlayers(ctx context.Context) error {
+	query := `UPDATE player SET location=next_location`
+
+	_, err := c.db.ExecContext(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "failed moving players to their destinations")
 	}
 	return nil
 }
@@ -124,12 +136,23 @@ func (c *connection) GetAllPlayers(ctx context.Context) ([]entities.Player, erro
 
 func (c *connection) KillPlayer(ctx context.Context, twitterID string) error {
 	query := `UPDATE player SET location=
-    	(SELECT location FROM temple WHERE location.martial_order=player.martial_order)
-		WHERE twitter_id=$1`
+		(SELECT location FROM temple WHERE temple.martial_order=player.martial_order),
+		dead=TRUE WHERE twitter_id=$1`
 
 	_, err := c.db.ExecContext(ctx, query, twitterID)
 	if err != nil {
 		return errors.Wrap(err, "failed killing player")
+	}
+	return nil
+}
+
+func (c *connection) RevivePlayers(ctx context.Context) error {
+	query := `UPDATE player SET dead=FALSE WHERE martial_order IN
+		(SELECT temple.order FROM temple INNER JOIN location ON temple.location=location.id)`
+
+	_, err := c.db.ExecContext(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "failed reviving players")
 	}
 	return nil
 }

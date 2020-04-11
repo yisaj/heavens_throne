@@ -403,11 +403,22 @@ That's not an adjacent location.'
 	const moving = `
 You are now moving to %s.
 `
+	const dead = `
+You are too dead to move anywhere.	
+`
 	player, err := h.resource.GetPlayer(ctx, recipientID)
 	if err != nil {
 		return errors.Wrap(err, "failed parsing DM")
 	}
 	if player == nil {
+		return nil
+	}
+
+	if player.Dead {
+		err = h.speaker.SendDM(recipientID, dead)
+		if err != nil {
+			return errors.Wrap(err, "failed sending player move on dead message")
+		}
 		return nil
 	}
 
@@ -454,7 +465,7 @@ You are now moving to %s.
 		}
 	}
 
-	err = h.resource.MovePlayer(ctx, recipientID, locationID)
+	err = h.resource.UpdatePlayerDestination(ctx, recipientID, locationID)
 	if err != nil {
 		return errors.Wrap(err, "failed moving player")
 	}

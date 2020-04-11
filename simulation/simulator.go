@@ -234,6 +234,11 @@ func (ns *NormalSimulator) Simulate() error {
 		}
 	}
 
+	err = ns.resource.RevivePlayers(context.TODO())
+	if err != nil {
+		return errors.Wrap(err, "failed simulation")
+	}
+
 	// tweet new map state and battle tweets
 	err = ns.storyteller.PostMainThread(battleEvents)
 	if err != nil {
