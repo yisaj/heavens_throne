@@ -29,7 +29,8 @@ RUN mkdir /app
 WORKDIR /app
 
 COPY migrations migrations
-COPY testcard.png testcard.png
+COPY maptemplate.svg maptemplate.svg
+COPY LHANDW.TTF /usr/share/fonts/LHANDW.TTF
 COPY --from=build /app/heavens_throne heavens_throne
 
 EXPOSE 80

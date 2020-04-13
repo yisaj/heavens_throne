@@ -107,16 +107,16 @@ I'm busy simulating right now.'
 				continue
 			}
 			// TODO ENGINEER: confirm the locks work the way that I want it to
-			simulating := h.simlock.Check()
-			if simulating {
+			msg := html.UnescapeString(messageEvent.MessageCreate.MessageData.Text)
+			//simulating := h.simlock.Check()
+			if false { //simulating {
 				h.simlock.RUnlock()
 				err = h.speaker.SendDM(recipientID, busySimulating)
 				continue
 			}
 
-			msg := html.UnescapeString(messageEvent.MessageCreate.MessageData.Text)
 			err = h.dmParser.ParseDM(r.Context(), recipientID, msg)
-			h.simlock.RUnlock()
+			//h.simlock.RUnlock()
 			if err != nil {
 				h.logger.WithError(err).Error("failed parsing direct message")
 			}

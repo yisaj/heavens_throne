@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/yisaj/heavens_throne/database"
+	"github.com/yisaj/heavens_throne/simulation"
 	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/pkg/errors"
@@ -113,15 +114,17 @@ type Handler interface {
 // A player input handler has to be able to access database resources and respond
 // to the player via a twitter speaker
 type handler struct {
-	resource database.Resource
-	speaker  twitspeak.TwitterSpeaker
+	resource  database.Resource
+	speaker   twitspeak.TwitterSpeaker
+	simulator simulation.Simulator
 }
 
 // newInputHandler constructs a handler to handle player input
-func newInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeaker) Handler {
+func newInputHandler(resource database.Resource, speaker twitspeak.TwitterSpeaker, simulator simulation.Simulator) Handler {
 	return &handler{
 		resource,
 		speaker,
+		simulator,
 	}
 }
 
@@ -691,9 +694,12 @@ func (h *handler) Echo(ctx context.Context, recipientID string, msg string) erro
 }
 
 func (h *handler) Simulate(ctx context.Context, recipientID string) error {
-	// TODO ENGINEER: actually simulate here
+	err := h.simulator.Simulate()
+	if err != nil {
+		return errors.Wrap(err, "failed simulation")
+	}
 
-	err := h.speaker.SendDM(recipientID, "Attempting to simulate...")
+	err = h.speaker.SendDM(recipientID, "Attempting to simulate...")
 	if err != nil {
 		return errors.Wrap(err, "failed sending echo message")
 	}

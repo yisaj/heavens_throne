@@ -32,14 +32,19 @@ func main() {
 	speaker := twitspeak.NewSpeaker(conf, logger)
 
 	// spin up game simulation cron task (one execution per day)
+	simLock := simulation.SimLock{}
+	storyteller := simulation.NewStoryTeller(speaker, resource)
+	simulator := simulation.NewNormalSimulator(logger, resource, storyteller, &simLock)
 	c := cron.New()
-	c.AddFunc("0 0 * * *", func() { logger.Info("running game simulator") })
+	c.AddFunc("0 0 * * *", func() {
+		logger.Info("running game simulator")
+		simulator.Simulate()
+	})
 	c.Start()
 	defer c.Stop()
 
 	// spin up twitter webhooks server
-	simLock := simulation.SimLock{}
-	twitlisten.Listen(conf, speaker, resource, logger, &simLock)
+	twitlisten.Listen(conf, speaker, resource, logger, &simLock, &simulator)
 
 	// stop game simulation task on exit
 

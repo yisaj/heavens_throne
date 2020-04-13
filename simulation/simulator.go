@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/sirupsen/logrus"
 	"github.com/yisaj/heavens_throne/database"
 	"github.com/yisaj/heavens_throne/entities"
 
@@ -42,8 +43,10 @@ func (sl *SimLock) WLock() {
 
 // WUnlock releases the write lock for when the simulator finishes running
 func (sl *SimLock) WUnlock() {
+	sl.holdLock.Lock()
 	sl.held = false
 	sl.longLock.Unlock()
+	sl.holdLock.Unlock()
 }
 
 // Check gets a read lock if the simulator is not running, returning true
@@ -98,14 +101,16 @@ type Simulator interface {
 
 // NormalSimulator is the first, most natural implementation of a simulator
 type NormalSimulator struct {
+	logger      *logrus.Logger
 	resource    database.Resource
 	storyteller StoryTeller
 	lock        *SimLock
 }
 
 // NewNormalSimulator constructs a NormalSimulator
-func NewNormalSimulator(resource database.Resource, storyteller StoryTeller, lock *SimLock) NormalSimulator {
+func NewNormalSimulator(logger *logrus.Logger, resource database.Resource, storyteller StoryTeller, lock *SimLock) NormalSimulator {
 	return NormalSimulator{
+		logger,
 		resource,
 		storyteller,
 		lock,
@@ -139,6 +144,9 @@ func (ns *NormalSimulator) Simulate() error {
 	// process all players into a map grouped by location
 	playersByLocationAndOrder := make(map[int32]map[string][]*entities.Player)
 	for _, player := range players {
+		if playersByLocationAndOrder[player.Location] == nil {
+			playersByLocationAndOrder[player.Location] = make(map[string][]*entities.Player)
+		}
 		playersByLocationAndOrder[player.Location][player.MartialOrder] = append(playersByLocationAndOrder[player.Location][player.MartialOrder], &player)
 	}
 
@@ -157,7 +165,7 @@ func (ns *NormalSimulator) Simulate() error {
 
 		if numArmies < 2 {
 			// no battle occurs
-			err := ns.storyteller.SendNoFightUpdate(locationPlayers[presentOrder])
+			err := ns.storyteller.SendNoReports(locationPlayers[presentOrder])
 			if err != nil {
 				return errors.Wrap(err, "failed simulation")
 			}
@@ -226,7 +234,7 @@ func (ns *NormalSimulator) Simulate() error {
 			}
 
 			// send out storyteller individual tweets and save battle tweets
-			err = ns.storyteller.SendCombatUpdates(combatEvents)
+			err = ns.storyteller.SendCombatReports(combatEvents)
 			if err != nil {
 				return errors.Wrap(err, "failed simulation")
 			}

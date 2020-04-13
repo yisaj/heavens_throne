@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/yisaj/heavens_throne/database"
+	"github.com/yisaj/heavens_throne/simulation"
 	"github.com/yisaj/heavens_throne/twitspeak"
 
 	"github.com/sirupsen/logrus"
@@ -24,9 +25,9 @@ type parser struct {
 }
 
 // NewDMParser constructs a new parser to parse player input
-func NewDMParser(resource database.Resource, speaker twitspeak.TwitterSpeaker, logger *logrus.Logger) DMParser {
+func NewDMParser(resource database.Resource, speaker twitspeak.TwitterSpeaker, logger *logrus.Logger, simulator simulation.Simulator) DMParser {
 	return &parser{
-		newInputHandler(resource, speaker),
+		newInputHandler(resource, speaker, simulator),
 		logger,
 	}
 }
