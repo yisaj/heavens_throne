@@ -7,6 +7,7 @@ services:
     volumes:
       - dbdata:/var/lib/postgresql/data
     environment:
+    # TODO: REMOVE THIS
       - POSTGRES_USER=hthrone-server
       - POSTGRES_PASSWORD=hthrone-pass
       - POSTGRES_DB=hthrone

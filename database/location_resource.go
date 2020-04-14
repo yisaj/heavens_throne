@@ -18,6 +18,7 @@ type LocationResource interface {
 	GetArrivingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error)
 	GetLeavingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error)
 	SetLocationOwner(ctx context.Context, locationID int32, owner string) error
+	SetLocationOccupier(ctx context.Context, locationID int32, occupier string) error
 }
 
 func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entities.Location, error) {
@@ -113,6 +114,16 @@ func (c *connection) SetLocationOwner(ctx context.Context, locationID int32, own
 	_, err := c.db.ExecContext(ctx, query, owner, locationID)
 	if err != nil {
 		return errors.Wrap(err, "failed setting location owner")
+	}
+	return nil
+}
+
+func (c *connection) SetLocationOccupier(ctx context.Context, locationID int32, occupier string) error {
+	query := `UPDATE location SET occupier=$1 WHERE id=$2`
+
+	_, err := c.db.ExecContext(ctx, query, occupier, locationID)
+	if err != nil {
+		return errors.Wrap(err, "failed setting location occupier")
 	}
 	return nil
 }

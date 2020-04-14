@@ -452,7 +452,8 @@ You are too dead to move anywhere.
 			return errors.Wrap(err, "failed moving player")
 		}
 
-		found := false
+		// TODO ENG: Revert to false after testing
+		found := true
 		for _, adjacentLocation := range adjacentLocations {
 			if adjacentLocation == locationID {
 				found = true

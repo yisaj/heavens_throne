@@ -19,9 +19,9 @@ import (
 // StoryTeller contains the logic to generate combat/battle reports and send them
 // to the player
 type StoryTeller interface {
-	SendNoReports(players []*entities.Player) error
-	SendCombatReports(combatEvents []*CombatEvent) error
-	PostMainThread(battleEvents []*BattleEvent) error
+	SendNoReports(players []entities.Player) error
+	SendCombatReports(combatEvents []CombatEvent) error
+	PostMainThread(battleEvents []LocationEvent) error
 }
 
 // A canary needs to be able to generate and send battle reports
@@ -38,9 +38,9 @@ func NewStoryTeller(speaker twitspeak.TwitterSpeaker, resource database.Resource
 	}
 }
 
-func (c *canary) SendNoReports(players []*entities.Player) error {
+func (c *canary) SendNoReports(players []entities.Player) error {
 	for _, player := range players {
-		err := c.speaker.SendDM(player.TwitterID, generateNoReport(player))
+		err := c.speaker.SendDM(player.TwitterID, generateNoReport(&player))
 		if err != nil {
 			return errors.Wrap(err, "failed to send no report")
 		}
@@ -48,9 +48,9 @@ func (c *canary) SendNoReports(players []*entities.Player) error {
 	return nil
 }
 
-func (c *canary) SendCombatReports(combatEvents []*CombatEvent) error {
+func (c *canary) SendCombatReports(combatEvents []CombatEvent) error {
 	for _, combatEvent := range combatEvents {
-		err := c.speaker.SendDM(combatEvent.Attacker.TwitterID, generateCombatReport(combatEvent))
+		err := c.speaker.SendDM(combatEvent.Attacker.TwitterID, generateCombatReport(&combatEvent))
 		if err != nil {
 			return errors.Wrap(err, "failed to send combat report")
 		}
@@ -58,29 +58,29 @@ func (c *canary) SendCombatReports(combatEvents []*CombatEvent) error {
 	return nil
 }
 
-func (c *canary) PostMainThread(battleEvents []*BattleEvent) error {
+func (c *canary) PostMainThread(locationEvents []LocationEvent) error {
 	err := c.generateMapSVG()
 	if err != nil {
 		return errors.Wrap(err, "failed posting main thread")
 	}
-	logrus.WithFields(logrus.Fields{}).Info("a")
+	logrus.WithFields(logrus.Fields{}).Debug("a")
 	err = c.rasterizeMapSVG()
 	if err != nil {
 		return errors.Wrap(err, "failed posting main thread")
 	}
-	logrus.WithFields(logrus.Fields{}).Info("b")
+	logrus.WithFields(logrus.Fields{}).Debug("b")
 	imageID, err := c.speaker.UploadPNG("map.png")
 	if err != nil {
 		return errors.Wrap(err, "failed posting main thread")
 	}
-	logrus.WithFields(logrus.Fields{}).Info("c")
+	logrus.WithFields(logrus.Fields{}).Debug("c")
 	tweetID, err := c.speaker.Tweet("MAP", "", imageID)
 	if err != nil {
 		return errors.Wrap(err, "failed posting map image")
 	}
-	logrus.WithFields(logrus.Fields{}).Info("d")
-	for _, battleEvent := range battleEvents {
-		tweetID, err = c.speaker.Tweet(generateBattleReport(battleEvent), tweetID, "")
+	logrus.WithFields(logrus.Fields{}).Debug("d")
+	for _, locationEvent := range locationEvents {
+		tweetID, err = c.speaker.Tweet(generateLocationReport(&locationEvent), tweetID, "")
 		if err != nil {
 			return errors.Wrap(err, "failed posting battle report")
 		}
@@ -119,12 +119,12 @@ Your %s was %s.
 	return fmt.Sprintf(combatMsg, typeStr, resultStr)
 }
 
-func generateBattleReport(battleEvent *BattleEvent) string {
+func generateLocationReport(locationEvent *LocationEvent) string {
 	battleMsg := `
 location: %s, survivors: %d, fatalities: %d	
 `
 
-	return fmt.Sprintf(battleMsg, battleEvent.locationAfter.Name, len(battleEvent.survivors), len(battleEvent.fatalities))
+	return fmt.Sprintf(battleMsg, locationEvent.locationAfter.Name, len(locationEvent.survivors), len(locationEvent.fatalities))
 }
 
 func (c *canary) rasterizeMapSVG() error {
@@ -153,7 +153,7 @@ func (c *canary) generateMapSVG() error {
 	reader := bufio.NewReader(templateFile)
 	for line, _, err := reader.ReadLine(); err == nil; line, _, err = reader.ReadLine() {
 		if len(line) > 0 && line[0] == '*' {
-			logrus.WithFields(logrus.Fields{}).Info(line)
+			logrus.WithFields(logrus.Fields{}).Debug(line)
 			locationID, err := strconv.ParseInt(string(line[5:7]), 16, 32)
 
 			if err != nil {

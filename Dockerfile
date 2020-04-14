@@ -23,6 +23,9 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
 
 # run the app
 FROM alpine
+RUN apk --no-cache add curl
+RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.10.0/migrate.linux-amd64.tar.gz | tar xvz
+RUN mv migrate.linux-amd64 /usr/bin/migrate 
 RUN apk --no-cache add inkscape
 RUN apk --no-cache add ca-certificates
 RUN mkdir /app
