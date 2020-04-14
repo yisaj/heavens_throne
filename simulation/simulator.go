@@ -144,7 +144,7 @@ func (ns *NormalSimulator) Simulate() error {
 	}
 
 	// get all players
-	players, err := ns.resource.GetAllPlayers(context.TODO())
+	players, err := ns.resource.GetAlivePlayers(context.TODO())
 	if err != nil {
 		return errors.Wrap(err, "failed simulation")
 	}

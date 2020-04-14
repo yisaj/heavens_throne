@@ -21,6 +21,7 @@ type PlayerResource interface {
 	TogglePlayerUpdates(ctx context.Context, twitterID string) (bool, error)
 	AdvancePlayer(ctx context.Context, twitterID string, class string, rank int16) error
 	GetAllPlayers(ctx context.Context) ([]entities.Player, error)
+	GetAlivePlayers(ctx context.Context) ([]entities.Player, error)
 	KillPlayer(ctx context.Context, twitterID string) error
 	RevivePlayers(ctx context.Context) error
 }
@@ -134,9 +135,20 @@ func (c *connection) GetAllPlayers(ctx context.Context) ([]entities.Player, erro
 	return players, nil
 }
 
+func (c *connection) GetAlivePlayers(ctx context.Context) ([]entities.Player, error) {
+	query := `SELECT * FROM player WHERE player.dead=FALSE`
+
+	var players []entities.Player
+	err := c.db.SelectContext(ctx, &players, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed getting alive players")
+	}
+	return players, nil
+}
+
 func (c *connection) KillPlayer(ctx context.Context, twitterID string) error {
 	query := `UPDATE player SET location=
-		(SELECT location FROM temple WHERE temple.martial_order=player.martial_order),
+		(SELECT temple.location FROM temple WHERE temple.martial_order=player.martial_order),
 		next_location=
 		(SELECT location FROM temple WHERE temple.martial_order=player.martial_order),
 		dead=TRUE WHERE twitter_id=$1`
