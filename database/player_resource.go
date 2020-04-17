@@ -136,7 +136,7 @@ func (c *connection) GetAllPlayers(ctx context.Context) ([]entities.Player, erro
 }
 
 func (c *connection) GetAlivePlayers(ctx context.Context) ([]entities.Player, error) {
-	query := `SELECT * FROM player WHERE player.dead=FALSE`
+	query := `SELECT * FROM player WHERE player.location IS NOT NULL`
 
 	var players []entities.Player
 	err := c.db.SelectContext(ctx, &players, query)
@@ -147,11 +147,7 @@ func (c *connection) GetAlivePlayers(ctx context.Context) ([]entities.Player, er
 }
 
 func (c *connection) KillPlayer(ctx context.Context, twitterID string) error {
-	query := `UPDATE player SET location=
-		(SELECT temple.location FROM temple WHERE temple.martial_order=player.martial_order),
-		next_location=
-		(SELECT location FROM temple WHERE temple.martial_order=player.martial_order),
-		dead=TRUE WHERE twitter_id=$1`
+	query := `UPDATE player SET location=NULL, next_location=NULL WHERE twitter_id=$1`
 
 	_, err := c.db.ExecContext(ctx, query, twitterID)
 	if err != nil {
@@ -161,8 +157,9 @@ func (c *connection) KillPlayer(ctx context.Context, twitterID string) error {
 }
 
 func (c *connection) RevivePlayers(ctx context.Context) error {
-	query := `UPDATE player SET dead=FALSE WHERE martial_order IN
-	(SELECT temple.martial_order FROM temple INNER JOIN location ON temple.location=location.id)`
+	query := `UPDATE player SET location = temple.location, next_location = temple.location
+	FROM temple, location WHERE player.location IS NULL AND player.martial_order=temple.martial_order
+	AND temple.martial_order=location.owner`
 
 	_, err := c.db.ExecContext(ctx, query)
 	if err != nil {

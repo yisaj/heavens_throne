@@ -1,0 +1,2 @@
+ALTER TABLE player ADD COLUMN dead boolean NOT NULL DEFAULT FALSE;
+UPDATE player SET dead=TRUE WHERE location=NULL;

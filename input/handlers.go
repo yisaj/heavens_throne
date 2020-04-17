@@ -175,23 +175,26 @@ You have an !advance available
 		return nil
 	}
 
-	location, err := h.resource.GetLocation(ctx, player.Location)
-	if err != nil || location == nil {
-		return errors.Wrap(err, "failed sending player status")
-	}
-	nextLocation, err := h.resource.GetLocation(ctx, player.NextLocation)
-	if err != nil || nextLocation == nil {
-		return errors.Wrap(err, "failed sending player status")
-	}
+	// TODO ENGINEER: include status for dead players
+	if player.IsAlive() {
+		location, err := h.resource.GetLocation(ctx, player.Location.Int32)
+		if err != nil || location == nil {
+			return errors.Wrap(err, "failed sending player status")
+		}
+		nextLocation, err := h.resource.GetLocation(ctx, player.NextLocation.Int32)
+		if err != nil || nextLocation == nil {
+			return errors.Wrap(err, "failed sending player status")
+		}
 
-	msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name, nextLocation.Name)
-	if player.Experience >= 100 {
-		msg += fmt.Sprintf(advanceFormat)
-	}
+		msg := fmt.Sprintf(statusFormat, player.MartialOrder, player.FormatClass(), player.Experience, location.Name, nextLocation.Name)
+		if player.Experience >= 100 {
+			msg += fmt.Sprintf(advanceFormat)
+		}
 
-	err = h.speaker.SendDM(recipientID, msg)
-	if err != nil {
-		return errors.Wrap(err, "failed sending help message")
+		err = h.speaker.SendDM(recipientID, msg)
+		if err != nil {
+			return errors.Wrap(err, "failed sending help message")
+		}
 	}
 
 	return nil
@@ -387,7 +390,7 @@ The Gate is closed to you. At least for this cycle.
 		return errors.Wrap(err, "failed joining new player")
 	}
 
-	err = h.speaker.SendDM(recipientID, fmt.Sprintf(joinFormat, player.MartialOrder, player.FormatClass(), player.Location))
+	err = h.speaker.SendDM(recipientID, fmt.Sprintf(joinFormat, player.MartialOrder, player.FormatClass(), player.Location.Int32))
 	if err != nil {
 		return errors.Wrap(err, "failed to send join message")
 	}
@@ -417,7 +420,7 @@ You are too dead to move anywhere.
 		return nil
 	}
 
-	if player.Dead {
+	if !player.IsAlive() {
 		err = h.speaker.SendDM(recipientID, dead)
 		if err != nil {
 			return errors.Wrap(err, "failed sending player move on dead message")
@@ -446,13 +449,13 @@ You are too dead to move anywhere.
 		}
 	}
 
-	if locationID != player.Location {
-		adjacentLocations, err := h.resource.GetAdjacentLocations(ctx, player.Location)
+	if locationID != player.Location.Int32 {
+		adjacentLocations, err := h.resource.GetAdjacentLocations(ctx, player.Location.Int32)
 		if err != nil {
 			return errors.Wrap(err, "failed moving player")
 		}
 
-		// TODO ENG: Revert to false after testing
+		// TODO ENGINEER: Revert to false after testing
 		found := true
 		for _, adjacentLocation := range adjacentLocations {
 			if adjacentLocation == locationID {

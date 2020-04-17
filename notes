@@ -291,4 +291,56 @@ unlock
 
 wait second lock
 
+// TYPES OF DAILY MESSAGES
 
+- no contest
+
+- combat survived, victory
+combat event, battle event
+
+- combat survived, defeat
+combat event, battle event
+
+- combat died, revived
+combat event, battle event
+
+- combat died
+combat event, battle event, temple state
+
+- revived
+temple state
+
+- NULL
+
+STORYTELLER
+
+PLAYER DMS
+
+    get all players
+    for each player
+        get last battle event
+        if player dead but no battle, dont send anything
+        if player alive but no battle, send revive message
+        if battle
+            get combat events
+            if player dead, send combat + revive story
+            if player alive, send combat story
+        if temple reclaimed, send temple reclamation story
+        if temple captured, send temple capture story
+        if throne captured, send throne capture story
+
+PUBLIC THREAD
+    get all battles, send battle tweets
+
+NEW DATABASE TABLES
+
+currentday #
+encounter : player, day, battleid
+battles : location, MORE INFO 
+combats : battleid, type, attacker, defender, result
+
+a battle is a day, a location, 
+
+combat: day, location, attacker, defender, result, attackerclass, defenderclass
+
+location record: player, location, day

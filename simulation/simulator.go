@@ -143,23 +143,24 @@ func (ns *NormalSimulator) Simulate() error {
 		return errors.Wrap(err, "failed simulation")
 	}
 
-	// get all players
+	// get all alive players
 	players, err := ns.resource.GetAlivePlayers(context.TODO())
 	if err != nil {
 		return errors.Wrap(err, "failed simulation")
 	}
 
-	ns.logger.Debugf("SIMMM %s", players[0].TwitterID)
-	ns.logger.Debugf("SIMMM %s", players[1].TwitterID)
+	for _, player := range players {
+		ns.logger.Debugf("SIMMM %s", player.TwitterID)
+	}
 
 	// process all players into a map grouped by location
 	playersByLocationAndOrder := make(map[int32]map[string][]entities.Player)
 	for _, player := range players {
 		ns.logger.Debugf("BETA: %+v", player)
-		if playersByLocationAndOrder[player.Location] == nil {
-			playersByLocationAndOrder[player.Location] = make(map[string][]entities.Player)
+		if playersByLocationAndOrder[player.Location.Int32] == nil {
+			playersByLocationAndOrder[player.Location.Int32] = make(map[string][]entities.Player)
 		}
-		playersByLocationAndOrder[player.Location][player.MartialOrder] = append(playersByLocationAndOrder[player.Location][player.MartialOrder], player)
+		playersByLocationAndOrder[player.Location.Int32][player.MartialOrder] = append(playersByLocationAndOrder[player.Location.Int32][player.MartialOrder], player)
 		ns.logger.Debugf("DELTA: %+v", playersByLocationAndOrder)
 	}
 

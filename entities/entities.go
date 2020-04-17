@@ -11,10 +11,9 @@ type Player struct {
 	TwitterID      string `db:"twitter_id"`
 	ReceiveUpdates bool   `db:"receive_updates"`
 	Active         bool
-	Dead           bool
 	MartialOrder   string `db:"martial_order"`
-	Location       int32
-	NextLocation   int32 `db:"next_location"`
+	Location       sql.NullInt32
+	NextLocation   sql.NullInt32 `db:"next_location"`
 	Class          string
 	Experience     int16
 	Rank           int16
@@ -90,6 +89,10 @@ func (p *Player) GetStats() Stats {
 // IsRanged returns whether the player is a ranged class
 func (p *Player) IsRanged() bool {
 	return p.Class == "archer" || p.Class == "mage"
+}
+
+func (p *Player) IsAlive() bool {
+	return p.Location.Valid
 }
 
 // Location defines the location object, mirroring the database

@@ -1,5 +1,5 @@
 # build dependencies
-FROM golang AS build
+FROM golang:1.14 AS build
 RUN mkdir /app
 WORKDIR /app
 
