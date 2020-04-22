@@ -19,9 +19,7 @@ import (
 // StoryTeller contains the logic to generate combat/battle reports and send them
 // to the player
 type StoryTeller interface {
-	SendNoReports(players []entities.Player) error
-	SendCombatReports(combatEvents []CombatEvent) error
-	PostMainThread(battleEvents []LocationEvent) error
+	Tell() error
 }
 
 // A canary needs to be able to generate and send battle reports
@@ -38,6 +36,66 @@ func NewStoryTeller(speaker twitspeak.TwitterSpeaker, resource database.Resource
 	}
 }
 
+func (c *canary) Tell() error {
+	day, err := c.resource.GetDay(context.TODO())
+	if err != nil {
+		return errors.Wrap(err, "failed telling story")
+	}
+	// generate and send DMs to players
+
+	// generate and post the map
+	err = c.generateMapSVG()
+	if err != nil {
+		return errors.Wrap(err, "failed telling story")
+	}
+
+	err = c.rasterizeMapSVG()
+	if err != nil {
+		return errors.Wrap(err, "failed telling story")
+	}
+
+	imageID, err := c.speaker.UploadPNG("map.png")
+	if err != nil {
+		return errors.Wrap(err, "failed telling story")
+	}
+
+	mapCaption, err := c.generateMapCaption(day)
+	if err != nil {
+		return errors.Wrap(err, "failed telling story")
+	}
+	tweetID, err := c.speaker.Tweet(mapCaption, "", imageID)
+	if err != nil {
+		return errors.Wrap(err, "failed telling story")
+	}
+
+	// generate and post battle reports
+	battleLocations, err := c.resource.GetBattleLocations(context.TODO())
+
+	for _, battleLocation := range battleLocations {
+		// players before combat
+		// class breakdown
+
+		// players after combat
+		// class breakdown
+
+		// results
+		// captured
+		// occupied
+		// stalemate
+	}
+	return nil
+}
+
+func (c *canary) generateMapCaption(day int32) (string, error) {
+	// TODO ENGINEER: the map tweet should also give the day, victories, temple captures, highlights, etc
+
+	// write the day header
+
+	// write the story
+
+	return "DAY " + strconv.Itoa(int(day)), nil
+}
+
 func (c *canary) SendNoReports(players []entities.Player) error {
 	for _, player := range players {
 		err := c.speaker.SendDM(player.TwitterID, generateNoReport(&player))
@@ -48,7 +106,7 @@ func (c *canary) SendNoReports(players []entities.Player) error {
 	return nil
 }
 
-func (c *canary) SendCombatReports(combatEvents []CombatEvent) error {
+func (c *canary) SendCombatReports(combatEvents []entities.CombatEvent) error {
 	for _, combatEvent := range combatEvents {
 		err := c.speaker.SendDM(combatEvent.Attacker.TwitterID, generateCombatReport(&combatEvent))
 		if err != nil {
@@ -58,42 +116,11 @@ func (c *canary) SendCombatReports(combatEvents []CombatEvent) error {
 	return nil
 }
 
-func (c *canary) PostMainThread(locationEvents []LocationEvent) error {
-	err := c.generateMapSVG()
-	if err != nil {
-		return errors.Wrap(err, "failed posting main thread")
-	}
-	logrus.WithFields(logrus.Fields{}).Debug("a")
-	err = c.rasterizeMapSVG()
-	if err != nil {
-		return errors.Wrap(err, "failed posting main thread")
-	}
-	logrus.WithFields(logrus.Fields{}).Debug("b")
-	imageID, err := c.speaker.UploadPNG("map.png")
-	if err != nil {
-		return errors.Wrap(err, "failed posting main thread")
-	}
-	logrus.WithFields(logrus.Fields{}).Debug("c")
-	tweetID, err := c.speaker.Tweet("MAP", "", imageID)
-	if err != nil {
-		return errors.Wrap(err, "failed posting map image")
-	}
-	logrus.WithFields(logrus.Fields{}).Debug("d")
-	for _, locationEvent := range locationEvents {
-		tweetID, err = c.speaker.Tweet(generateLocationReport(&locationEvent), tweetID, "")
-		if err != nil {
-			return errors.Wrap(err, "failed posting battle report")
-		}
-	}
-
-	return nil
-}
-
 func generateNoReport(player *entities.Player) string {
 	return "No fight"
 }
 
-func generateCombatReport(combatEvent *CombatEvent) string {
+func generateCombatReport(combatEvent *entities.CombatEvent) string {
 	combatMsg := `
 Your %s was %s.	
 `
@@ -101,18 +128,18 @@ Your %s was %s.
 	var resultStr string
 
 	switch combatEvent.EventType {
-	case Attack:
+	case entities.Attack:
 		typeStr = "Attack"
-	case CounterAttack:
+	case entities.CounterAttack:
 		typeStr = "Counter Attack"
-	case Revive:
+	case entities.Revive:
 		typeStr = "Revive"
 	}
 
 	switch combatEvent.Result {
-	case Success:
+	case entities.Success:
 		resultStr = "Successful"
-	case Failure:
+	case entities.Failure:
 		resultStr = "Unsuccessful"
 	}
 

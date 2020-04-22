@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+// TODO ENGINEER: review database structures and optimize
+
 // Player defines the player object, mirroring the database
 type Player struct {
 	ID             int32
@@ -108,4 +110,33 @@ type Location struct {
 type Logistic struct {
 	LocationName string `db:"name"`
 	Count        int32
+}
+
+// CombatEventType denotes the actions that can be taken during combat
+type CombatEventType int
+
+// All the combat event types
+const (
+	Attack CombatEventType = iota
+	CounterAttack
+	Revive
+)
+
+// CombatResult denotes the possible outcomes of combat
+type CombatResult int
+
+// TODO ENGINEER: this naming might be too general and conflict with other stuff eventually
+// All the combat results
+const (
+	Success CombatResult = iota
+	Failure
+	NoTarget
+)
+
+// CombatEvent details what happened in a particular instance of combat
+type CombatEvent struct {
+	Attacker  *Player
+	Defender  *Player
+	EventType CombatEventType
+	Result    CombatResult
 }

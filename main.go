@@ -34,11 +34,12 @@ func main() {
 	// spin up game simulation cron task (one execution per day)
 	simLock := simulation.SimLock{}
 	storyteller := simulation.NewStoryTeller(speaker, resource)
-	simulator := simulation.NewNormalSimulator(logger, resource, storyteller, &simLock)
+	simulator := simulation.NewNormalSimulator(logger, resource, &simLock)
 	c := cron.New()
 	c.AddFunc("0 0 * * *", func() {
 		logger.Info("running game simulator")
 		simulator.Simulate()
+		storyteller.Tell()
 	})
 	c.Start()
 	defer c.Stop()

@@ -51,7 +51,7 @@ func initializePlayers() map[string][]entities.Player {
 
 func TestCalculateAttackOrder(t *testing.T) {
 	players := initializePlayers()
-	sim := NewNormalSimulator(nil, nil, nil, nil)
+	sim := NewNormalSimulator(nil, nil, nil)
 	attackOrder := sim.calculateAttackOrder(players)
 
 	for it := attackOrder.Iterator(); it.Next(); {
@@ -89,14 +89,14 @@ func TestAttackTarget(t *testing.T) {
 		MartialOrder: "The Baaturate",
 	}
 
-	sim := NewNormalSimulator(nil, nil, nil, nil)
+	sim := NewNormalSimulator(nil, nil, nil)
 	event := sim.attackTarget(&attacker, &defender, 0)
 	t.Logf("%+v\n", event)
 }
 
 func TestBattleSimulation(t *testing.T) {
 	players := initializePlayers()
-	simulator := NewNormalSimulator(nil, nil, nil, nil)
+	simulator := NewNormalSimulator(nil, nil, nil)
 	survivors, fatalities, combatEvents, err := simulator.SimulateBattle(0, players)
 	if err != nil {
 		t.Error(err)

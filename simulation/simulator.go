@@ -66,34 +66,6 @@ func (sl *SimLock) RUnlock() {
 	sl.longLock.RUnlock()
 }
 
-// CombatEventType denotes the actions that can be taken during combat
-type CombatEventType int
-
-// All the combat event types
-const (
-	Attack CombatEventType = iota
-	CounterAttack
-	Revive
-)
-
-// CombatResult denotes the possible outcomes of combat
-type CombatResult int
-
-// All the combat results
-const (
-	Success CombatResult = iota
-	Failure
-	NoTarget
-)
-
-// CombatEvent details what happened in a particular instance of combat
-type CombatEvent struct {
-	Attacker  *entities.Player
-	Defender  *entities.Player
-	EventType CombatEventType
-	Result    CombatResult
-}
-
 // Simulator is the base interface for all game simulators
 type Simulator interface {
 	Simulate() error
@@ -101,18 +73,16 @@ type Simulator interface {
 
 // NormalSimulator is the first, most natural implementation of a simulator
 type NormalSimulator struct {
-	logger      *logrus.Logger
-	resource    database.Resource
-	storyteller StoryTeller
-	lock        *SimLock
+	logger   *logrus.Logger
+	resource database.Resource
+	lock     *SimLock
 }
 
 // NewNormalSimulator constructs a NormalSimulator
-func NewNormalSimulator(logger *logrus.Logger, resource database.Resource, storyteller StoryTeller, lock *SimLock) NormalSimulator {
+func NewNormalSimulator(logger *logrus.Logger, resource database.Resource, lock *SimLock) NormalSimulator {
 	return NormalSimulator{
 		logger,
 		resource,
-		storyteller,
 		lock,
 	}
 }
@@ -137,8 +107,14 @@ type LocationEvent struct {
 func (ns *NormalSimulator) Simulate() error {
 	ns.lock.WLock()
 
-	// increment the day and move all players
+	// increment the day
 	err := ns.resource.IncrementDay(context.TODO())
+	if err != nil {
+		return errors.Wrap(err, "failed simulation")
+	}
+
+	// move all players
+	err = ns.resource.MovePlayers(context.TODO())
 	if err != nil {
 		return errors.Wrap(err, "failed simulation")
 	}
@@ -166,7 +142,6 @@ func (ns *NormalSimulator) Simulate() error {
 
 	ns.logger.Debugf("ALPHA %+v", playersByLocationAndOrder)
 
-	locationEvents := make([]LocationEvent, 0, len(playersByLocationAndOrder))
 	// for each location simulate a battle
 	for locationID, locationPlayers := range playersByLocationAndOrder {
 		// Count how many armies are present
@@ -179,19 +154,7 @@ func (ns *NormalSimulator) Simulate() error {
 			}
 		}
 
-		var locationEvent LocationEvent
-		if numArmies < 2 {
-			// no battle occurs
-			err := ns.storyteller.SendNoReports(locationPlayers[occupier])
-			if err != nil {
-				return errors.Wrap(err, "failed simulation")
-			}
-
-			locationEvent = LocationEvent{
-				eventType: NoContest,
-			}
-
-		} else {
+		if numArmies >= 2 {
 			// battle occurs
 			survivors, fatalities, combatEvents, err := ns.SimulateBattle(locationID, locationPlayers)
 			if err != nil {
@@ -213,18 +176,15 @@ func (ns *NormalSimulator) Simulate() error {
 				ns.giveCombatExperience(&event)
 			}
 
-			locationEvent = LocationEvent{
-				eventType:  Battle,
-				survivors:  survivors,
-				fatalities: fatalities,
+			// create records for each combat
+			for _, event := range combatEvents {
+				err = ns.resource.CreateCombatRecord(context.TODO(), locationID, &event)
+				if err != nil {
+					return errors.Wrap(err, "failed inserting combat records")
+				}
 			}
 
-			// send out storyteller individual tweets and save battle tweets
-			err = ns.storyteller.SendCombatReports(combatEvents)
-			if err != nil {
-				return errors.Wrap(err, "failed simulation")
-			}
-
+			// TODO ENGINEER: deal with ties, as well as 3 battle configurations (count losers maybe?)
 			// calculate the occupier
 			var max int
 			for order, array := range survivors {
@@ -241,45 +201,25 @@ func (ns *NormalSimulator) Simulate() error {
 			return errors.Wrap(err, "failed simulation")
 		}
 
-		deltaLocation := *location
-		if location.Occupier.String == occupier {
-			// location ownership should change
-			deltaLocation.Owner.String = occupier
-			err = ns.resource.SetLocationOwner(context.TODO(), location.ID, occupier)
+		if location.Occupier.Valid && location.Occupier.String == occupier {
+			if !location.Owner.Valid || location.Owner.String != occupier {
+				// change the owner to the new occupier
+				err = ns.resource.SetLocationOwner(context.TODO(), location.ID, occupier)
+				if err != nil {
+					return errors.Wrap(err, "failed simulation")
+				}
+			}
+		} else {
+			// change the occupier to the new ocuppier
+			err = ns.resource.SetLocationOccupier(context.TODO(), location.ID, occupier)
 			if err != nil {
 				return errors.Wrap(err, "failed simulation")
 			}
 		}
-		deltaLocation.Occupier.String = occupier
-
-		// Change the location owner to the new owner
-		if location.Owner.String != deltaLocation.Owner.String {
-			err = ns.resource.SetLocationOwner(context.TODO(), locationID, occupier)
-			if err != nil {
-				return errors.Wrap(err, "failed simulation")
-			}
-		}
-
-		// change the location occupier if necessary
-		if location.Occupier.String != deltaLocation.Occupier.String {
-			err = ns.resource.SetLocationOccupier(context.TODO(), locationID, occupier)
-			if err != nil {
-				return errors.Wrap(err, "failed simulation")
-			}
-		}
-
-		locationEvent.locationBefore = *location
-		locationEvent.locationAfter = deltaLocation
-		locationEvents = append(locationEvents, locationEvent)
 	}
 
+	// revive all players
 	err = ns.resource.RevivePlayers(context.TODO())
-	if err != nil {
-		return errors.Wrap(err, "failed simulation")
-	}
-
-	// tweet new map state and battle tweets
-	err = ns.storyteller.PostMainThread(locationEvents)
 	if err != nil {
 		return errors.Wrap(err, "failed simulation")
 	}
@@ -290,7 +230,7 @@ func (ns *NormalSimulator) Simulate() error {
 	return nil
 }
 
-func (ns *NormalSimulator) giveCombatExperience(event *CombatEvent) {
+func (ns *NormalSimulator) giveCombatExperience(event *entities.CombatEvent) {
 	// TODO DESIGN: do this
 	/*
 		if event.Result == Success {
@@ -306,7 +246,7 @@ func (ns *NormalSimulator) giveCombatExperience(event *CombatEvent) {
 }
 
 // SimulateBattle simulates a battle at a single location
-func (ns *NormalSimulator) SimulateBattle(location int32, players map[string][]entities.Player) (map[string][]*entities.Player, map[string][]*entities.Player, []CombatEvent, error) {
+func (ns *NormalSimulator) SimulateBattle(location int32, players map[string][]entities.Player) (map[string][]*entities.Player, map[string][]*entities.Player, []entities.CombatEvent, error) {
 	deadPlayers := map[string]*bst.Map{
 		"Staghorn Sect": bst.NewMap(10),
 		"Order Gorgona": bst.NewMap(10),
@@ -315,7 +255,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players map[string][]e
 
 	// calculate attack order
 	livingPlayers := ns.calculateAttackOrder(players)
-	combatEvents := make([]CombatEvent, 0, livingPlayers.Len())
+	combatEvents := make([]entities.CombatEvent, 0, livingPlayers.Len())
 
 	// calculate total aggros
 	totalAggros, medicPowers := ns.calculateTotalAggros(livingPlayers)
@@ -346,16 +286,16 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players map[string][]e
 			targetStats := target.GetStats()
 
 			if target == nil {
-				attackEvent := CombatEvent{nil, player, Attack, NoTarget}
+				attackEvent := entities.CombatEvent{nil, player, entities.Attack, entities.NoTarget}
 				combatEvents = append(combatEvents, attackEvent)
 				continue
 			}
 
+			// BUG: dead players can attack somehow
 			// decide what to do
 			attackEvent := ns.attackTarget(player, target, medicPowers[target.MartialOrder])
-			fmt.Printf("HRY %+v\n", attackEvent)
 			combatEvents = append(combatEvents, attackEvent)
-			if attackEvent.Result == Success {
+			if attackEvent.Result == entities.Success {
 				// move target to graveyard
 				deadPlayers[target.MartialOrder].Add(bst.Float64(targetInitiative), target)
 				livingPlayers.Delete(bst.Float64(targetInitiative))
@@ -374,7 +314,7 @@ func (ns *NormalSimulator) SimulateBattle(location int32, players map[string][]e
 				if target.Class == "glaivemaster" {
 					counterAttackEvent := ns.counterAttackTarget(target, player, medicPowers[player.MartialOrder])
 					combatEvents = append(combatEvents, counterAttackEvent)
-					if counterAttackEvent.Result == Success {
+					if counterAttackEvent.Result == entities.Success {
 						// move player to graveyard
 						deadPlayers[player.MartialOrder].Add(bst.Float64(playerInitiative), player)
 						livingPlayers.Delete(bst.Float64(playerInitiative))
@@ -509,7 +449,7 @@ func (ns *NormalSimulator) calculateEnemyAggro(player *entities.Player, totalAgg
 }
 
 // reviveTarget attempts to return an allied player from the dead and back to the battle
-func (ns *NormalSimulator) reviveTarget(player *entities.Player, deadPlayers map[string]*bst.Map, attackOrder *bst.Map) CombatEvent {
+func (ns *NormalSimulator) reviveTarget(player *entities.Player, deadPlayers map[string]*bst.Map, attackOrder *bst.Map) entities.CombatEvent {
 	// try to revive an ally
 	// TODO DESIGN: figure revive probability rates
 	myDead := deadPlayers[player.MartialOrder]
@@ -521,11 +461,11 @@ func (ns *NormalSimulator) reviveTarget(player *entities.Player, deadPlayers map
 		if rand.Intn(2) > 0 {
 			attackOrder.Add(initiative, target)
 			myDead.Delete(initiative)
-			return CombatEvent{target, player, Revive, Success}
+			return entities.CombatEvent{target, player, entities.Revive, entities.Success}
 		}
-		return CombatEvent{target, player, Revive, Failure}
+		return entities.CombatEvent{target, player, entities.Revive, entities.Failure}
 	}
-	return CombatEvent{nil, player, Revive, NoTarget}
+	return entities.CombatEvent{nil, player, entities.Revive, entities.NoTarget}
 }
 
 func (ns *NormalSimulator) calculateAttackOrder(players map[string][]entities.Player) *bst.Map {
@@ -547,13 +487,13 @@ func (ns *NormalSimulator) calculateAttackOrder(players map[string][]entities.Pl
 	return attackOrder
 }
 
-func (ns *NormalSimulator) counterAttackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) CombatEvent {
+func (ns *NormalSimulator) counterAttackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) entities.CombatEvent {
 	event := ns.attackTarget(attacker, defender, medicBonus)
-	event.EventType = CounterAttack
+	event.EventType = entities.CounterAttack
 	return event
 }
 
-func (ns *NormalSimulator) attackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) CombatEvent {
+func (ns *NormalSimulator) attackTarget(attacker *entities.Player, defender *entities.Player, medicBonus int) entities.CombatEvent {
 	attackerStats := attacker.GetStats()
 	defenderStats := defender.GetStats()
 
@@ -584,7 +524,7 @@ func (ns *NormalSimulator) attackTarget(attacker *entities.Player, defender *ent
 
 	fmt.Printf("%f, %f", attack, defense)
 	if attack > defense {
-		return CombatEvent{attacker, defender, Attack, Success}
+		return entities.CombatEvent{attacker, defender, entities.Attack, entities.Success}
 	}
-	return CombatEvent{attacker, defender, Attack, Failure}
+	return entities.CombatEvent{attacker, defender, entities.Attack, entities.Failure}
 }

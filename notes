@@ -341,6 +341,15 @@ combats : battleid, type, attacker, defender, result
 
 a battle is a day, a location, 
 
-combat: day, location, attacker, defender, result, attackerclass, defenderclass
+combat: day, location, attacker, defender, result, attackerclass, defenderclass, type
 
 location record: player, location, day
+
+player
+
+X map 
+
+battle
+# soldiers from each order
+breakdown of classes from each order
+breakdown of slain classes from each order

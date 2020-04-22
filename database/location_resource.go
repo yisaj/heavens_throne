@@ -19,6 +19,7 @@ type LocationResource interface {
 	GetLeavingLogistics(ctx context.Context, locationID int32) ([]entities.Logistic, error)
 	SetLocationOwner(ctx context.Context, locationID int32, owner string) error
 	SetLocationOccupier(ctx context.Context, locationID int32, occupier string) error
+	GetBattleLocations(ctx context.Context) ([]int32, error)
 }
 
 func (c *connection) GetLocation(ctx context.Context, locationID int32) (*entities.Location, error) {
@@ -108,10 +109,20 @@ func (c *connection) GetLeavingLogistics(ctx context.Context, locationID int32) 
 	return logistics, nil
 }
 
+// TODO ENGINEER: think about merging recording queries into transactions, somehow?
 func (c *connection) SetLocationOwner(ctx context.Context, locationID int32, owner string) error {
-	query := `UPDATE location SET owner=$1 WHERE id=$2`
+	// record the capture before you do it
+	query := `INSERT INTO ownership_record (day, location, event, martial_order) SELECT count, $1, 'capture', $2
+		FROM calendar`
 
-	_, err := c.db.ExecContext(ctx, query, owner, locationID)
+	_, err := c.db.ExecContext(ctx, query, locationID, owner)
+	if err != nil {
+		return errors.Wrap(err, "failed creating capture record")
+	}
+
+	query = `UPDATE location SET owner=$1 WHERE id=$2`
+
+	_, err = c.db.ExecContext(ctx, query, owner, locationID)
 	if err != nil {
 		return errors.Wrap(err, "failed setting location owner")
 	}
@@ -119,11 +130,41 @@ func (c *connection) SetLocationOwner(ctx context.Context, locationID int32, own
 }
 
 func (c *connection) SetLocationOccupier(ctx context.Context, locationID int32, occupier string) error {
-	query := `UPDATE location SET occupier=$1 WHERE id=$2`
+	// record the occupation before you do it
+	query := `INSERT INTO ownership_record (day, location, event, martial_order) SELECT count, $1, 'occupy', $2
+		FROM calendar`
 
-	_, err := c.db.ExecContext(ctx, query, occupier, locationID)
+	_, err := c.db.ExecContext(ctx, query, locationID, occupier)
+	if err != nil {
+		return errors.Wrap(err, "failed creating ownership record")
+	}
+
+	query = `UPDATE location SET occupier=$1 WHERE id=$2`
+
+	_, err = c.db.ExecContext(ctx, query, occupier, locationID)
 	if err != nil {
 		return errors.Wrap(err, "failed setting location occupier")
 	}
 	return nil
+}
+
+func (c *connection) GetBattleLocations(ctx context.Context) ([]int32, error) {
+	query := `SELECT DISTINCT location FROM combat_record, calendar WHERE calendar.day = combat_record.day ORDER BY location`
+
+	locations := make([]int32, 0, 41)
+	rows, err := c.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed querying for battle locations")
+	}
+
+	for rows.Next() {
+		var location int32
+		err = rows.Scan(&location)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed scanning battle locations")
+		}
+		locations = append(locations, location)
+	}
+
+	return locations, nil
 }

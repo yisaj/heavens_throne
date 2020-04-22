@@ -94,12 +94,20 @@ func (c *connection) UpdatePlayerDestination(ctx context.Context, twitterID stri
 }
 
 func (c *connection) MovePlayers(ctx context.Context) error {
-	query := `UPDATE player SET location=next_location`
-
+	// make a record of all players' movement before you move them
+	query := `INSERT INTO move_record (day, location, player) SELECT calendar.count, player.next_location, player.id
+		FROM calendar, player WHERE player.location != player.next_location`
 	_, err := c.db.ExecContext(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "failed recording player movement to destination")
+	}
+
+	query = `UPDATE player SET location=next_location WHERE location != next_location`
+	_, err = c.db.ExecContext(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "failed moving players to their destinations")
 	}
+
 	return nil
 }
 
@@ -147,9 +155,16 @@ func (c *connection) GetAlivePlayers(ctx context.Context) ([]entities.Player, er
 }
 
 func (c *connection) KillPlayer(ctx context.Context, twitterID string) error {
-	query := `UPDATE player SET location=NULL, next_location=NULL WHERE twitter_id=$1`
-
+	// make a record of player death movement before you kill them
+	query := `INSERT INTO move_record (day, location, player) SELECT calendar.count, NULL, player.id
+		FROM calendar, player WHERE player.twitter_id = $1`
 	_, err := c.db.ExecContext(ctx, query, twitterID)
+	if err != nil {
+		return errors.Wrap(err, "failed recording player death movement")
+	}
+
+	query = `UPDATE player SET location=NULL, next_location=NULL WHERE twitter_id=$1`
+	_, err = c.db.ExecContext(ctx, query, twitterID)
 	if err != nil {
 		return errors.Wrap(err, "failed killing player")
 	}
@@ -157,11 +172,19 @@ func (c *connection) KillPlayer(ctx context.Context, twitterID string) error {
 }
 
 func (c *connection) RevivePlayers(ctx context.Context) error {
-	query := `UPDATE player SET location = temple.location, next_location = temple.location
-	FROM temple, location WHERE player.location IS NULL AND player.martial_order=temple.martial_order
-	AND temple.martial_order=location.owner`
-
+	// make a record of player revival movement before you revive them
+	query := `INSERT INTO move_record (day, location, player) SELECT calendar.count, temple.location, player.id
+		FROM calendar, temple, location, player WHERE player.location IS NULL AND player.martial_order = temple.martial_order
+		AND temple.martial_order = location.owner AND temple.location = location.id`
 	_, err := c.db.ExecContext(ctx, query)
+	if err != nil {
+		return errors.Wrap(err, "failed recording player revival movement")
+	}
+
+	query = `UPDATE player SET location = temple.location, next_location = temple.location
+	FROM temple, location WHERE player.location IS NULL AND player.martial_order=temple.martial_order
+	AND temple.martial_order=location.owner AND temple.location=location.id`
+	_, err = c.db.ExecContext(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "failed reviving players")
 	}
